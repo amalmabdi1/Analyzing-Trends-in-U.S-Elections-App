@@ -67,4 +67,6 @@ Finally, we need to make sure that our models and data evaluation are easily int
 
 The general layout of the app could have an election map where the user can enter a given election year and see the mapping of red, blue, and purple states throughout the years with a statistical breakdown for each purple state. This breakdown could include information about who was running for election, and the split of voters who voted for each party. 
 
+### Options for Users
+
 Users should be able to choose data for a specific year through a drop down menu, and be able to explore the data via an overall election map and a breakdown of results from an individual swing state basis. This will allow them to easily view different graphs and statistical breakdowns without having to have any previous knowledge of data analysis. 

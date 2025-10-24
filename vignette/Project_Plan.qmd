@@ -1,0 +1,42 @@
+---
+title: "Analyzing Purple State Trends in U.S Presidential Elections (1976-2020)"
+author: Sydney Affolter, Amal Abdi, Olivia Bohart
+format: html
+embed-resources: true
+toc: true
+---
+
+## App Context
+
+Over the last couple presidential elections the balance between the Republican and Democratic support has shifted dramatically across the US. “Purple states” commonly refer to the fluctuations between the two parties. These swing states are usually the determining factor in what party wins the presidency. This project's purpose is to analyze how voting patterns in these states have evolved from 1976-2020.
+
+
+Source: MIT Election Data and Science Lab (MEDSL), U.S. President 1976–2020
+Link: https://doi.org/10.7910/DVN/42MVDX
+Description: County- and state-level election returns for all U.S. presidential elections between 1976 and 2020.
+Variables:  15
+Observation: 4287
+Date: 1976–2020 
+
+
+## Lit Review
+
+Purple states have played a crucial role in deciding U.S. presidential elections for decades. According to the MIT Election Data and Science Lab, these swing states swing the pendulum between Republican and Democratic majorities. Which is often the deicing factor in who wins the presidency (MIT Election Data and Science Lab, 2021). Voter behavior in purple states is more dramatic than in a strong red or blue states. In presidential elections from 1976 to 2020, voter turnout in battleground states like Florida and Ohio were consistently higher than in non-swing states sometimes by as much as 5 to 7 percent (Hill, 2013; McKee & Teigen, 2013). These states also show how quickly party support shifts across counties. One study even showed that nearly 30 percent of counties in key swing states changed party preference between consecutive elections(Hill, 2013)
+
+The foundation of the Electoral College is definitely contributing to the phenomenon of purple states. The U.S. Electoral College assigns votes based on state populations. Unless it’s a divided states, in which case  a small margin in votes can swing all the electoral votes. The Election Assistance Commission explains that this winner-take-all system exists in 48 states and means a candidate can win key states without winning a majority of votes nationally (U.S. Election Assistance Commission, 2011). Campaigns tend to focus on high voter turnout in battleground states while largely ignoring states with predictable outcomes (McKee & Teigen, 2013). 
+
+## References 
+
+Hill, K. Q. (2013). Analyzing purple state trends in U.S. presidential elections (1976–2020). University of Georgia OpenScholar. https://openscholar.uga.edu/record/11510?v=pdf
+Lublin, D. (2013). Battleground states and voter participation in U.S. presidential elections: An empirical test. ResearchGate. https://www.researchgate.net/publication/255970024_Battleground_states_and_voter_participation_in_US_presidential_elections_An_empirical_test
+McKee, S., & Teigen, J. (2013). Swing state voter behavior and mobilization. ScholarWorks at University of Maine. https://scholarworks.umf.maine.edu/publications/99/
+U.S. Election Assistance Commission. (2011). The electoral college. https://www.eac.gov/sites/default/files/eac_assets/1/28/The%20Electoral%20College%20(Jan.%202011).pdf
+MIT Election Data and Science Lab. (2021). U.S. president 1976–2020 county and state election returns. https://doi.org/10.7910/DVN/42MVDX
+
+## Primary User and Questions of Interest 
+
+Our primary user would be a political data analyst, journalist, or even a campaign strategist. They would use our app to understand historical voting trends in different areas of the country. The questions a user would use our app to answer would be one of the following. 
+
+- Which states have experienced the greatest partisan shifts between 1976 and 2020?
+- How have margins of victory changed in traditional swing states like Florida, Ohio, and Pennsylvania?
+- Are there regional trends in polarization or competitiveness?

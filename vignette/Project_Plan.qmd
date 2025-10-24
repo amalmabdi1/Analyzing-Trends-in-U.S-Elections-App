@@ -12,10 +12,15 @@ Over the last couple presidential elections the balance between the Republican a
 
 
 Source: MIT Election Data and Science Lab (MEDSL), U.S. President 1976–2020
-Link: https://doi.org/10.7910/DVN/42MVDX
+
+Link: [https://doi.org/10.7910/DVN/42MVDX](https://doi.org/10.7910/DVN/42MVDX)
+
 Description: County- and state-level election returns for all U.S. presidential elections between 1976 and 2020.
+
 Variables:  15
+
 Observation: 4287
+
 Date: 1976–2020 
 
 
@@ -27,11 +32,15 @@ The foundation of the Electoral College is definitely contributing to the phenom
 
 ## References 
 
-Hill, K. Q. (2013). Analyzing purple state trends in U.S. presidential elections (1976–2020). University of Georgia OpenScholar. https://openscholar.uga.edu/record/11510?v=pdf
-Lublin, D. (2013). Battleground states and voter participation in U.S. presidential elections: An empirical test. ResearchGate. https://www.researchgate.net/publication/255970024_Battleground_states_and_voter_participation_in_US_presidential_elections_An_empirical_test
-McKee, S., & Teigen, J. (2013). Swing state voter behavior and mobilization. ScholarWorks at University of Maine. https://scholarworks.umf.maine.edu/publications/99/
-U.S. Election Assistance Commission. (2011). The electoral college. https://www.eac.gov/sites/default/files/eac_assets/1/28/The%20Electoral%20College%20(Jan.%202011).pdf
-MIT Election Data and Science Lab. (2021). U.S. president 1976–2020 county and state election returns. https://doi.org/10.7910/DVN/42MVDX
+Hill, K. Q. (2013). [Analyzing purple state trends in U.S. presidential elections (1976–2020). University of Georgia OpenScholar.](https://openscholar.uga.edu/record/11510?v=pdf)
+
+Lublin, D. (2013). [Battleground states and voter participation in U.S. presidential elections: An empirical test. ResearchGate.](https://www.researchgate.net/publication/255970024_Battleground_states_and_voter_participation_in_US_presidential_elections_An_empirical_test)
+
+McKee, S., & Teigen, J. (2013). [Swing state voter behavior and mobilization. ScholarWorks at University of Maine.](https://scholarworks.umf.maine.edu/publications/99/)
+
+[U.S. Election Assistance Commission. (2011). The electoral college.](https://www.eac.gov/sites/default/files/eac_assets/1/28/The%20Electoral%20College%20(Jan.%202011).pdf)
+
+[MIT Election Data and Science Lab. (2021). U.S. president 1976–2020 county and state election returns.](https://doi.org/10.7910/DVN/42MVDX)
 
 ## Primary User and Questions of Interest 
 
@@ -40,3 +49,6 @@ Our primary user would be a political data analyst, journalist, or even a campai
 - Which states have experienced the greatest partisan shifts between 1976 and 2020?
 - How have margins of victory changed in traditional swing states like Florida, Ohio, and Pennsylvania?
 - Are there regional trends in polarization or competitiveness?
+
+## Ethics Review
+

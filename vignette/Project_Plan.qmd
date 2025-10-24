@@ -61,4 +61,8 @@ Third, when cleaning our data we need to ensure we are not cleaning in a biased 
 
 Finally, we need to make sure that our models and data evaluation are easily interpretable, even to those whole may not be well versed in data interpretation and analysis. There cannot be misleading representation, difficult to understand charts or explanations, or a partisan framing. This aligns with ACM codes 1.4 to be fair and take action to not discriminate, and 2.1 to strive for quality in both the processes and products of professional work.
 
+## App Concept
+
+### General Layout
+
 

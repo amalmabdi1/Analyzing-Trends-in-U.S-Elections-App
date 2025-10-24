@@ -50,5 +50,15 @@ Our primary user would be a political data analyst, journalist, or even a campai
 - How have margins of victory changed in traditional swing states like Florida, Ohio, and Pennsylvania?
 - Are there regional trends in polarization or competitiveness?
 
-## Ethics Review
+## Ethics Review Across the Data Science Lifestyle
+**References to the [ACM Code of Ethics and Professional Conduct](https://www.acm.org/code-of-ethics)**
+
+First, when it comes to how we frame our questions of interest/purpose, we need to frame this as a descriptive historical analysis. Ethical concerns can come into play in this stage of the data science life cycle if we frame our questions or intent in a partisan manner, or if we exclude any information to make a specific point clearer. We can tie this to ACM principle 2.5 to give comprehensive and thorough evaluations. 
+
+Second, we got our data from a reputable source and ensured we were able to use it for our project with no legal concerns. This lines up with ACM codes 1.3 to be honest and trustworthy, and 2.8 to access resources only when authorized. 
+
+Third, when cleaning our data we need to ensure we are not cleaning in a biased way, avoid cherry picking to push our results in a given direction, and make sure we don't make any irreversible changes to the data. These align with ACM codes 2.1 to achieve high quality, 2.2 maintain professional competence, and 1.3 to maintain honesty. 
+
+Finally, we need to make sure that our models and data evaluation are easily interpretable, even to those whole may not be well versed in data interpretation and analysis. There cannot be misleading representation, difficult to understand charts or explanations, or a partisan framing. This aligns with ACM codes 1.4 to be fair and take action to not discriminate, and 2.1 to strive for quality in both the processes and products of profesional work.
+
 

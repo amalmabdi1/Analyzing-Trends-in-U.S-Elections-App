@@ -8,7 +8,7 @@ toc: true
 
 ## App Context
 
-Over the last couple presidential elections the balance between the Republican and Democratic support has shifted dramatically across the US. “Purple states” commonly refer to the fluctuations between the two parties. These swing states are usually the determining factor in what party wins the presidency. This project's purpose is to analyze how voting patterns in these states have evolved from 1976-2020.
+Over the last couple presidential elections the balance between the Republican and Democratic support has shifted dramatically across the US. “Purple states” commonly refer to the fluctuations between the two parties. These swing states are usually the determining factor in what party wins the presidency. This project's purpose is to analyze how voting patterns in these states have evolved from 1976-2020. 
 
 
 Source: MIT Election Data and Science Lab (MEDSL), U.S. President 1976–2020
@@ -71,6 +71,21 @@ The general layout of the app could have an election map where the user can ente
 
 Users should be able to choose data for a specific year through a drop down menu, and be able to explore the data via an overall election map and a breakdown of results from an individual swing state basis. This will allow them to easily view different graphs and statistical breakdowns without having to have any previous knowledge of data analysis. 
 
+## Statistical Models 
+
+We plan on having a heat map as well as a time series plot to show changes in vote share by party in swing states over time. Additionally, we will include a linear regression model of vote share for a party as a function of election year to detect long-term trends.
+
 ## Group Members and Responsibilities 
 
-Group members are Sydney Affolter, Amal Abdi, and Olivia Bohart. 
+Group members are Sydney Affolter, Amal Abdi, and Olivia Bohart. Responsibilities will be split as evenly as possible. Currently, we have separated our project into three sections: app building, data analysis, and writing. While we will collaborate on all three parts, Amal will be in charge of data analysis, Sydney will lead app building, and Olivia will head the writing.
+
+## Deliverables 
+
+Group Selection due Sept 23/24
+Project Plan due Oct 21/22
+Peer Review due Oct 28/29
+Progress Report due Nov 11/12
+Shiny App due Dec 9/10
+Vignette due Dec 9/10
+Oral Demonstration due Dec 9/10
+Peer Collaboration Assessment	4 due Dec 9/10

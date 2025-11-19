@@ -14,29 +14,92 @@ toc: true
 
 ## Topic and Data 
 
-**Context**\
-As our government grows increasingly polarized, understanding voting trends across all areas of government becomes more and more important. Using data from across federal, state, and local elections (along with demographic data), we want to create an app that allows the user to explore election trends and the impact that various demographic factors have on election results. 
+**Context, Problem, and Use Case**\
+As our government grows increasingly more polarized, understanding voting trends across all levels of government is more important than ever. Patterns that appear in presidential races often look different when we focus on congressional and state elections, and those differences can reveal a lot about how and why citizens engage in certain voting behavior. At the same time, demographic factors such as age, race, gender, education, and income are influencing the electorate in ways that are not always obvious from results alone.\
 
-**Problem**\
-
-
-**Use Case**\
+Using data from federal and state elections, combined with detailed demographic information, we want to build an app that allows users to explore these dynamics for themselves. The app will enable users to select places (states, counties, districts) and time periods, visualize changes in partisan support and turnout, and explore how electoral outcomes correlate with various demographic characteristics. By making these patterns easy to see and compare, our goal is to create a tool that helps students, researchers, journalists, and engaged citizens better understand how demographic change and political polarization interact to shape election results across the United States.\
 
 
 **Literature Review**\
 
 
-## Ethical Review 
+## Ethical Review Using the ACM Code of Ethics\
+Our project raises several ethical considerations that we assess using key principles from the ACM Code of Ethics.\
 
+**Problem Framing and Purpose.**\  
+The app can support education and research, but could also be misused for partisan targeting or oversimplified narratives about groups. To align with the ACM’s emphasis on contributing to society and avoiding harm, we will clearly state that the tool is intended for educational and analytical purposes, not for voter manipulation, and include a brief ethics note in the app.\
+
+**Data Sources, Bias, and Representation.**\
+We rely on public election and demographic data that may under-count or under-represent some populations. This raises fairness and bias concerns. To mitigate this, we will include measures that reflect diverse populations rather than focusing narrowly on a few groups.\
+
+**Data Cleaning, Aggregation, and Interpretation.**\
+We work with aggregate data, which can create issues if users try to infer individual behavior from group averages. Errors in joining or transforming data can further mislead. To uphold quality and honesty, we will use reproducible cleaning scripts, check joins carefully, and clearly state that results are aggregate and *not* causal or individual-level.\
+
+**Modeling and Visualization.**\  
+The app allows users to fit simple linear models and generate maps and plots. There is a risk that users over-interpret correlations as causal or develop stereotypes about specific demographic groups. We will label model results as exploratory associations and provide short interpretation notes.\
+
+**Privacy.** \ 
+Because we use aggregated, public data without individual identifiers, privacy risks are low. Nonetheless, in line with the ACM’s respect for privacy, we will clearly state that the app does not contain individual-level data and will avoid adding unnecessary detail.\
+
+**Team Practices and Attribution.**\  
+Finally, to meet professional responsibilities around quality, accountability, and respect for others’ work, we will maintain version-controlled, well-documented code and provide explicit credit to all data sources used. This helps ensure that our system is reproducible, transparent, and appropriately acknowledges the contributions of sources.\
 
 ## App Design 
 
+Our app will be organized around three main tabs: U.S. Election Map, Multivariable Analysis, and Single-Variable Analysis. Each tab will include a sidebar panel that lets users control the view by selecting demographic variables (e.g., race, income, education, age), the year or range of years, specific states, and the level of government (presidential, congressional, or gubernatorial elections).\
 
-## Demonstration Outline and Responsibilities
+The U.S. Election Map tab will feature a fully interactive map of the United States. Users will be able to hover over or click on a state to see key information from the dataset, such as vote share by party, turnout, and selected demographic characteristics. The sidebar will allow users to toggle between different election levels and demographic variables, dynamically updating the map so they can quickly compare states and visualize geographic patterns over time.\
 
+The Multivariable Analysis tab will be designed for exploring relationships between two or more variables. Users will be able to choose an outcome variable (for example, Democratic vote share or turnout) and one or more explanatory variables (such as percent nonwhite, median income, or education levels). They will have options to generate different plot types (such as scatterplots with trend lines, faceted plots by region, or grouped bar charts) and can optionally fit a simple linear model. When a model is selected, a statistical summary (including estimated coefficients, R-squared, and p-values) will appear below the plot to help users interpret the strength and direction of the relationships.\
 
-## Risk Assessment Mitigation 
+The Single-Variable Analysis tab will focus on descriptive patterns for one variable at a time. Users will be able to visualize distributions using histograms, density plots, bar charts, or time-series line plots, depending on whether the variable is continuous or categorical. The sidebar controls will again allow filtering by year, state, and election level. Below each plot, a brief statistical breakdown—such as counts, means, medians, and standard deviations or proportions—will summarize the selected variable.\
 
+## Demonstration Outline, Responsibilities, and Collaboration
 
-##Collaboration 
+**Timeline**\
+Data collection complete by: November 19th\
+App design plan complete by: November 19th\
+Revised literature review by: November 22nd\
+Data cleaning complete by: November 25th\
+Basic app code outline complete by: Dec 1st\
+US map tab complete by: Dec 2nd\
+Bivariate tab complete: Dec 3rd\
+Univariate tab complete: Dec 4th\
+Presentation practice: Dec 6th\
+
+**Responsibilities**\
+*Sydney*: Collecting federal election data, cleaning federal election data, app design plan, and US map tab.\
+*Amal*: Collecting gubernatorial election data, cleaning gubernatorial election data, and bivariate analysis tab.\
+*Olivia*: Updated literature review/ethics review, basic app code outline, and univariate analysis tab.\
+
+## Risk Assessment Mitigation\
+There are several potential risks associated with this project and corresponding strategies we will use to mitigate them.
+
+**1. Incomplete or missing data**
+
+Some of the datasets we plan to use have gaps in coverage across years, states, or specific demographic variables. This may limit the ability to perform consistent comparisons over time or across levels of government. To mitigate this risk, we will:
+
+- Systematically document which years, states, and variables are missing or partially observed.
+- Supplement the primary datasets with additional, smaller datasets from reputable sources (e.g., Census/ACS, state election offices) to fill key gaps where possible.
+- Clearly flag variables and time periods with limited coverage in the app’s interface (e.g., tooltips or notes) so users understand any limitations of the underlying data.
+- When necessary, adjust the scope of particular analyses (e.g., restricting to years with complete data) rather than forcing comparisons that would be misleading.
+
+**2. Challenges in joining data from multiple sources**
+
+Because our app combines data from different repositories (federal, state, local election data and demographic data), there is a risk of mismatches when joining datasets; for example, inconsistent state or county identifiers, differing geographic boundaries, or slightly different year definitions. To mitigate this risk, we will:
+
+- Standardize key join variables as part of an early data-cleaning step.
+- Use reproducible data-cleaning scripts that clearly document all recoding, aggregation, and filtering decisions.
+- Perform validation checks after each join (e.g., verifying that the number of units per year is as expected, spot-checking a subset of states) to identify and resolve discrepancies.
+
+**3. Project timeline and team capacity**
+
+Unexpected events in group members’ lives (illness, scheduling conflicts, workload spikes in other classes) may delay progress and threaten our ability to meet milestones. To mitigate this risk, we will:
+
+- Break the project into smaller, clearly defined tasks with internal deadlines.
+- Maintain a shared task list where responsibilities are visible to all group members.
+- Ensure that more than one person is familiar with each major part of the code so that tasks can be reallocated if someone becomes unavailable.
+- Build buffer time into our schedule before the final deadline to accommodate last-minute debugging or outstanding tasks.
+
+By identifying these risks early and planning specific mitigation strategies, our goal is to reduce the likelihood that data limitations, technical integration issues, or timeline disruptions will prevent us from delivering a functional, informative election analysis app.
 

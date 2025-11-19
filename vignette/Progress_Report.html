@@ -2146,10 +2146,12 @@ vertical-align: -.125em;
   <ul>
   <li><a href="#admin" id="toc-admin" class="nav-link active" data-scroll-target="#admin">Admin</a></li>
   <li><a href="#topic-and-data" id="toc-topic-and-data" class="nav-link" data-scroll-target="#topic-and-data">Topic and Data</a></li>
-  <li><a href="#ethical-review" id="toc-ethical-review" class="nav-link" data-scroll-target="#ethical-review">Ethical Review</a></li>
+  <li><a href="#ethical-review-using-the-acm-code-of-ethics" id="toc-ethical-review-using-the-acm-code-of-ethics" class="nav-link" data-scroll-target="#ethical-review-using-the-acm-code-of-ethics">Ethical Review Using the ACM Code of Ethics<br>
+  </a></li>
   <li><a href="#app-design" id="toc-app-design" class="nav-link" data-scroll-target="#app-design">App Design</a></li>
-  <li><a href="#demonstration-outline-and-responsibilities" id="toc-demonstration-outline-and-responsibilities" class="nav-link" data-scroll-target="#demonstration-outline-and-responsibilities">Demonstration Outline and Responsibilities</a></li>
-  <li><a href="#risk-assessment-mitigation" id="toc-risk-assessment-mitigation" class="nav-link" data-scroll-target="#risk-assessment-mitigation">Risk Assessment Mitigation</a></li>
+  <li><a href="#demonstration-outline-responsibilities-and-collaboration" id="toc-demonstration-outline-responsibilities-and-collaboration" class="nav-link" data-scroll-target="#demonstration-outline-responsibilities-and-collaboration">Demonstration Outline, Responsibilities, and Collaboration</a></li>
+  <li><a href="#risk-assessment-mitigation" id="toc-risk-assessment-mitigation" class="nav-link" data-scroll-target="#risk-assessment-mitigation">Risk Assessment Mitigation<br>
+  </a></li>
   </ul>
 </nav>
 </div>
@@ -2182,26 +2184,99 @@ vertical-align: -.125em;
 
 <section id="admin" class="level2">
 <h2 class="anchored" data-anchor-id="admin">Admin</h2>
-<p>App Title: Trends in United States Elections ()<br>
-Group Members: Sydney Affolter, Amal Abdi, and Olivia Bohart<br>
-Course: Data413-002<br>
+<p><strong>App Title:</strong> Trends in United States Elections ()<br>
+<strong>Group Members:</strong> Sydney Affolter, Amal Abdi, and Olivia Bohart<br>
+<strong>Course:</strong> Data413-002<br>
 </p>
 </section>
 <section id="topic-and-data" class="level2">
 <h2 class="anchored" data-anchor-id="topic-and-data">Topic and Data</h2>
+<p><strong>Context, Problem, and Use Case</strong><br>
+As our government grows increasingly more polarized, understanding voting trends across all levels of government is more important than ever. Patterns that appear in presidential races often look different when we focus on congressional and state elections, and those differences can reveal a lot about how and why citizens engage in certain voting behavior. At the same time, demographic factors such as age, race, gender, education, and income are influencing the electorate in ways that are not always obvious from results alone.<br>
+</p>
+<p>Using data from federal and state elections, combined with detailed demographic information, we want to build an app that allows users to explore these dynamics for themselves. The app will enable users to select places (states, counties, districts) and time periods, visualize changes in partisan support and turnout, and explore how electoral outcomes correlate with various demographic characteristics. By making these patterns easy to see and compare, our goal is to create a tool that helps students, researchers, journalists, and engaged citizens better understand how demographic change and political polarization interact to shape election results across the United States.<br>
+</p>
+<p><strong>Literature Review</strong><br>
+</p>
 </section>
-<section id="ethical-review" class="level2">
-<h2 class="anchored" data-anchor-id="ethical-review">Ethical Review</h2>
+<section id="ethical-review-using-the-acm-code-of-ethics" class="level2">
+<h2 class="anchored" data-anchor-id="ethical-review-using-the-acm-code-of-ethics">Ethical Review Using the ACM Code of Ethics<br>
+</h2>
+<p>Our project raises several ethical considerations that we assess using key principles from the ACM Code of Ethics.<br>
+</p>
+<p><strong>Problem Framing and Purpose.</strong>  The app can support civic education and research, but could also be misused for partisan targeting or oversimplified narratives about groups. To align with the ACM’s emphasis on contributing to society and avoiding harm, we will clearly state that the tool is intended for educational and analytical purposes, not for voter manipulation, and include a brief ethics note in the app.<br>
+</p>
+<p><strong>Data Sources, Bias, and Representation.</strong><br>
+We rely on public election and demographic data that may under-count or under-represent some populations. This raises fairness and bias concerns. To mitigate this, we will include measures that reflect diverse populations rather than focusing narrowly on a few groups.<br>
+</p>
+<p><strong>Data Cleaning, Aggregation, and Interpretation.</strong><br>
+We work with aggregate data, which can create issues if users try to infer individual behavior from group averages. Errors in joining or transforming data can further mislead. To uphold quality and honesty, we will use reproducible cleaning scripts, check joins carefully, and clearly state that results are aggregate and <em>not</em> causal or individual-level.<br>
+</p>
+<p><strong>Modeling and Visualization.</strong>  The app allows users to fit simple linear models and generate maps and plots. There is a risk that users over-interpret correlations as causal or develop stereotypes about specific demographic groups. We will label model results as exploratory associations and provide short interpretation notes.<br>
+</p>
+<p><strong>Privacy.</strong>   Because we use aggregated, public data without individual identifiers, privacy risks are low. Nonetheless, in line with the ACM’s respect for privacy, we will clearly state that the app does not contain individual-level data and will avoid adding unnecessary detail.<br>
+</p>
+<p><strong>Team Practices and Attribution.</strong>  Finally, to meet professional responsibilities around quality, accountability, and respect for others’ work, we will maintain version-controlled, well-documented code and provide explicit credit to all data sources used. This helps ensure that our system is reproducible, transparent, and appropriately acknowledges the contributions of sources.<br>
+</p>
 </section>
 <section id="app-design" class="level2">
 <h2 class="anchored" data-anchor-id="app-design">App Design</h2>
+<p>Our app will be organized around three main tabs: U.S. Election Map, Multivariable Analysis, and Single-Variable Analysis. Each tab will include a sidebar panel that lets users control the view by selecting demographic variables (e.g., race, income, education, age), the year or range of years, specific states, and the level of government (presidential, congressional, or gubernatorial elections).<br>
+</p>
+<p>The U.S. Election Map tab will feature a fully interactive map of the United States. Users will be able to hover over or click on a state to see key information from the dataset, such as vote share by party, turnout, and selected demographic characteristics. The sidebar will allow users to toggle between different election levels and demographic variables, dynamically updating the map so they can quickly compare states and visualize geographic patterns over time.<br>
+</p>
+<p>The Multivariable Analysis tab will be designed for exploring relationships between two or more variables. Users will be able to choose an outcome variable (for example, Democratic vote share or turnout) and one or more explanatory variables (such as percent nonwhite, median income, or education levels). They will have options to generate different plot types (such as scatterplots with trend lines, faceted plots by region, or grouped bar charts) and can optionally fit a simple linear model. When a model is selected, a statistical summary (including estimated coefficients, R-squared, and p-values) will appear below the plot to help users interpret the strength and direction of the relationships.<br>
+</p>
+<p>The Single-Variable Analysis tab will focus on descriptive patterns for one variable at a time. Users will be able to visualize distributions using histograms, density plots, bar charts, or time-series line plots, depending on whether the variable is continuous or categorical. The sidebar controls will again allow filtering by year, state, and election level. Below each plot, a brief statistical breakdown—such as counts, means, medians, and standard deviations or proportions—will summarize the selected variable.<br>
+</p>
 </section>
-<section id="demonstration-outline-and-responsibilities" class="level2">
-<h2 class="anchored" data-anchor-id="demonstration-outline-and-responsibilities">Demonstration Outline and Responsibilities</h2>
+<section id="demonstration-outline-responsibilities-and-collaboration" class="level2">
+<h2 class="anchored" data-anchor-id="demonstration-outline-responsibilities-and-collaboration">Demonstration Outline, Responsibilities, and Collaboration</h2>
+<p><strong>Timeline</strong><br>
+Data collection complete by: November 19th<br>
+App design plan complete by: November 19th<br>
+Revised literature review by: November 22nd<br>
+Data cleaning complete by: November 25th<br>
+Basic app code outline complete by: Dec 1st<br>
+US map tab complete by: Dec 2nd<br>
+Bivariate tab complete: Dec 3rd<br>
+Univariate tab complete: Dec 4th<br>
+Presentation practice: Dec 6th<br>
+</p>
+<p><strong>Responsibilities</strong><br>
+<em>Sydney</em>: Collecting federal election data, cleaning federal election data, app design plan, and US map tab.<br>
+<em>Amal</em>: Collecting gubernatorial election data, cleaning gubernatorial election data, and bivariate analysis tab.<br>
+<em>Olivia</em>: Updated literature review/ethics review, basic app code outline, and univariate analysis tab.<br>
+</p>
 </section>
 <section id="risk-assessment-mitigation" class="level2">
-<h2 class="anchored" data-anchor-id="risk-assessment-mitigation">Risk Assessment Mitigation</h2>
-<p>##Collaboration</p>
+<h2 class="anchored" data-anchor-id="risk-assessment-mitigation">Risk Assessment Mitigation<br>
+</h2>
+<p>There are several potential risks associated with this project and corresponding strategies we will use to mitigate them.</p>
+<p><strong>1. Incomplete or missing data</strong></p>
+<p>Some of the datasets we plan to use have gaps in coverage across years, states, or specific demographic variables. This may limit the ability to perform consistent comparisons over time or across levels of government. To mitigate this risk, we will:</p>
+<ul>
+<li>Systematically document which years, states, and variables are missing or partially observed.</li>
+<li>Supplement the primary datasets with additional, smaller datasets from reputable sources (e.g., Census/ACS, state election offices) to fill key gaps where possible.</li>
+<li>Clearly flag variables and time periods with limited coverage in the app’s interface (e.g., tooltips or notes) so users understand any limitations of the underlying data.</li>
+<li>When necessary, adjust the scope of particular analyses (e.g., restricting to years with complete data) rather than forcing comparisons that would be misleading.</li>
+</ul>
+<p><strong>2. Challenges in joining data from multiple sources</strong></p>
+<p>Because our app combines data from different repositories (federal, state, local election data and demographic data), there is a risk of mismatches when joining datasets; for example, inconsistent state or county identifiers, differing geographic boundaries, or slightly different year definitions. To mitigate this risk, we will:</p>
+<ul>
+<li>Standardize key join variables as part of an early data-cleaning step.</li>
+<li>Use reproducible data-cleaning scripts that clearly document all recoding, aggregation, and filtering decisions.</li>
+<li>Perform validation checks after each join (e.g., verifying that the number of units per year is as expected, spot-checking a subset of states) to identify and resolve discrepancies.</li>
+</ul>
+<p><strong>3. Project timeline and team capacity</strong></p>
+<p>Unexpected events in group members’ lives (illness, scheduling conflicts, workload spikes in other classes) may delay progress and threaten our ability to meet milestones. To mitigate this risk, we will:</p>
+<ul>
+<li>Break the project into smaller, clearly defined tasks with internal deadlines.</li>
+<li>Maintain a shared task list where responsibilities are visible to all group members.</li>
+<li>Ensure that more than one person is familiar with each major part of the code so that tasks can be reallocated if someone becomes unavailable.</li>
+<li>Build buffer time into our schedule before the final deadline to accommodate last-minute debugging or outstanding tasks.</li>
+</ul>
+<p>By identifying these risks early and planning specific mitigation strategies, our goal is to reduce the likelihood that data limitations, technical integration issues, or timeline disruptions will prevent us from delivering a functional, informative election analysis app.</p>
 </section>
 
 </main>

@@ -14,13 +14,16 @@ toc: true
 
 ## Topic and Data 
 
-**Context**
+**Context**\
+As our government grows increasingly polarized, understanding voting trends across all areas of government becomes more and more important. Using data from across federal, state, and local elections (along with demographic data), we want to create an app that allows the user to explore election trends and the impact that various demographic factors have on election results. 
 
-**Problem**
+**Problem**\
 
-**Use Case**
 
-**Literature Review**
+**Use Case**\
+
+
+**Literature Review**\
 
 
 ## Ethical Review 

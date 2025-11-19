@@ -1,27 +1,35 @@
 ---
-title: "Progress Report Analyzing Purple State Trends in U.S Presidential Elections (1976-2020)"
+title: "Progress Report Analyzing Trends in U.S Elections (1976-2020)"
 author: Sydney Affolter, Amal Abdi, Olivia Bohart
 format: html
 embed-resources: true
 toc: true
 ---
 
-##Admin 
+## Admin 
+
+**App Title:** Trends in United States Elections ()\
+**Group Members:** Sydney Affolter, Amal Abdi, and Olivia Bohart\
+**Course:** Data413-002\
+
+## Topic and Data 
+
+**Context**
+**Problem**
+**Use Case**
+**Literature Review**
 
 
-##Topic and Data 
+## Ethical Review 
 
 
-##Ethical Review 
+## App Design 
 
 
-##App Design 
+## Demonstration Outline and Responsibilities
 
 
-##Demonstration Outline and Responsibilities
-
-
-##Risk Assessment Mitigation 
+## Risk Assessment Mitigation 
 
 
 ##Collaboration 

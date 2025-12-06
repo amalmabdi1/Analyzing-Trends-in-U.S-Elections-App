@@ -1,0 +1,122 @@
+---
+title: "data clean up"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+```
+
+## Clean Up For Anes dataset 
+
+```{r}
+
+anes_df <- read_csv("../data_raw/anes_timeseries_cdf_csv_20220916.csv")
+
+head(anes_df)
+
+
+```
+
+```{r}
+
+# subset df with relevent variables
+anes_subset <- anes_df |>
+  select(
+    year = VCF0004,
+    respondent_id = VCF0006,
+    cross_year_id = VCF0006a,
+    state = VCF0901b,
+    age_group = VCF0102,
+    gender = VCF0104,
+    race = VCF0105a,
+    education = VCF0110,
+    income = VCF0114,
+    urban_rural = VCF0111,
+    census_region = VCF0112,
+    party_id = VCF0303,
+    turnout = VCF0706,
+    pres_vote = VCF0705
+  )
+
+head(anes_subset)
+  
+```
+
+```{r}
+# recoding values into lables 
+
+anes_clean_subset <- anes_subset |>
+  filter(year >= 1972) |>
+  mutate(
+    party_id = case_when(
+      party_id == 1 ~ "Strong Democrat",
+      party_id == 2 ~ "Weak Democrat",
+      party_id == 3 ~ "Ind-Democrat",
+      party_id == 4 ~ "Independent",
+      party_id == 5 ~ "Ind-Republican",
+      party_id == 6 ~ "Weak Republican",
+      party_id == 7 ~ "Strong Republican"),
+   
+    census_region = case_when(
+     census_region == 1 ~ "Northeast",
+     census_region == 2 ~ "North Central",
+     census_region == 3 ~ "South",
+     census_region == 4 ~ "West"),
+    
+    urban_rural = case_when(
+      urban_rural == 1 ~ "City",
+      urban_rural == 2 ~ "Suburban area",
+      urban_rural == 3 ~ "Rural area"),
+    
+    age_group = case_when(
+      age_group == 1 ~ "17-24",
+      age_group == 2 ~ "25-34",
+      age_group == 3 ~ "35-44",
+      age_group == 4 ~ "45-54",
+      age_group == 5 ~ "55-64",
+      age_group == 6 ~ "65-74",
+      age_group == 7 ~ "75+"),
+    
+    gender = case_when(
+      gender == 1 ~ "Male",
+      gender == 2 ~ "Female",
+      gender == 3 ~ "Other"),
+   
+    race = case_when(
+      race == 1 ~ "White",
+      race == 2 ~ "Black",
+      race == 3 ~ "Asian/Pacific lander",
+      race == 4 ~ "American Indian/Alaska Native",
+      race == 5 ~ "Hispanic",
+      race == 6 ~ "Other",
+      race == 7 ~ "Non-white Non-black"),
+    
+    education = case_when(
+      education == 1 ~ "Less than high school",
+      education == 2 ~ "High school",
+      education == 3 ~ "Some college",
+      education == 4 ~ "College or more"),
+    
+    income = case_when(
+      income == 1 ~ "0-16 percentile",
+      income == 2 ~ "17-33 percentile",
+      income == 3 ~ "34-67 percentile",
+      income == 4 ~ "68-95 percentile",
+      income == 5 ~ "96-100 percentile"),
+     
+    
+    turnout = case_when(
+      turnout == 1 ~ "Voted",
+      turnout == 0 ~ "Did not vote"),
+    
+    pres_vote = case_when(
+      pres_vote == 1 ~ "Democrat",
+      pres_vote == 2 ~ "Republican",
+      pres_vote == 3 ~ "Other")
+
+  )
+
+anes_clean_subset
+```

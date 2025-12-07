@@ -1,14 +1,6 @@
-library(tidyverse)
-library(shiny)
-library(tidyverse)
-library(here)
-library(broom)
-library(usmap)
+library(reader)
+library(dplyr)
 
-
-
-## Read in data
-## ANES dataset is individual survey responses 
 anes_df <- read_csv("../data_raw/anes_timeseries_cdf_csv_20220916.csv")
 
 
@@ -34,7 +26,7 @@ anes_subset <- anes_df |>
 
 ## Re-coding values into labels 
 
-  # mapping state abb. to full state names
+# mapping state abb. to full state names
 
 state_names <- data.frame(
   state_abb = state.abb,
@@ -189,74 +181,230 @@ year_choices <- unique(govener_clean_sub$year) |>
 
 party_choices <- c("Democrat", "Republican", "None-major party")
 
-# need variable for election types
-
-
-
 ## Begin User Interface Section ----------------
+  
+  # ===== TAB 1: U.S. Election Map ===================================
 ui <- fluidPage(
   titlePanel("Progress Report Analyzing Trends in U.S Elections (1976-2020))",
+             tabsetPanel(
+               tabPanel("National Map Explorer",
+                        sidebarLayout(
+                            sidebarPanel(
+                              h4("Map Controls"),
+                              
+                              selectInput(
+                                "year",
+                                "Select Year: ",
+                                choices = year_choices),
+                              
+                              
+                              
+                              selectInput(
+                                "demo_overlay",
+                                "Demographic Info:",
+                                choices = c("urban_rural", "age_group", "gender", "race", "education","income")),
+                              
+                            ),   
+                            
+                            mainPanel(
+                              plotOutput("us_map", height = "500px"),
+                              tableOutput("map_summary")
+                            )
+                          )
+                        ),
   
-  tabsetPanel(
-    tabPanel("National Map Explorer",
-              sidebarLayout(
-                sidebarPanel(
-                  h4("Map Controls"),
-                  
-                  selectInput(
-                    "year",
-                    "Select Year: ",
-                    choices = year_choices),
-              
-                  
-                  
-                  selectInput(
-                    "demo_overlay",
-                    "Demographic Info:",
-                     choices = c("urban_rural", "age_group", "gender", "race", "education","income")),
-                                        
-                  ),   
-                  
-              mainPanel(
-                plotOutput("us_map", height = "500px"),
-                tableOutput("map_summary")
-              )))
-  
-                  
-  # Tab 2: Multivariable Analysis 
-  tabPanel("Multivariable Analysis",
-           h3("Coming soon")
+  # ===== TAB 2: Multivariable Analysis ===============================
+  #leaving space for the other datasets by using filler dummy variables
+  tabPanel(
+    "Multivariable Analysis",
+    sidebarLayout(
+      sidebarPanel(
+        h4("Multivariable Controls"),
+        
+        selectInput(
+          "multi_level",
+          "Election level:",
+          choices = election_level_choices
+        ),
+        
+        sliderInput(
+          "multi_year_range",
+          "Year range:",
+          min = min(year_choices),
+          max = max(year_choices),
+          value = c(2000, max(year_choices)),
+          step = 1,
+          sep = ""
+        ),
+        
+        selectInput(
+          "multi_states",
+          "Filter states (optional):",
+          choices = state_choices,
+          multiple = TRUE
+        ),
+        
+        selectInput(
+          "multi_outcome",
+          "Outcome variable:",
+          choices = outcome_choices,
+        ),
+        
+        selectInput(
+          "multi_predictors",
+          "Explanatory variable(s):",
+          choices = demographic_choices,
+          multiple = TRUE
+        ),
+        
+        radioButtons(
+          "multi_plot_type",
+          "Plot type:",
+          choices = c(
+            "Scatterplot" = "scatter",
+            "Faceted scatter by region" = "facet_scatter", #region is dummy for now
+            "Grouped bar chart" = "grouped_bar"
+          ),
+          selected = "scatter"
+        ),
+        
+        checkboxInput(
+          "multi_add_lm",
+          "Fit linear model (lm)",
+          value = FALSE
+        )
+      ),
+      
+      mainPanel(
+        plotOutput("multi_plot", height = "500px"),
+        br(),
+        h4("Model summary"),
+        verbatimTextOutput("multi_model_summary")
+      )
+    )
   ),
   
-  # Tab 3: Data Summary 
-  tabPanel("Summary",
-           h3("Coming soon")
-     
-                  
+#=======TAB 3: Single Var Analysis=======
+  tabPanel(
+    "Single-Variable Analysis",
+    sidebarLayout(
+      sidebarPanel(
+        h4("Single-variable Controls"),
+        
+        selectInput(
+          "single_level",
+          "Election level:",
+          choices = election_level_choices
+        ),
+        
+        sliderInput(
+          "single_year_range",
+          "Year range:",
+          min = min(year_choices),
+          max = max(year_choices),
+          value = c(2000, max(year_choices)),
+          step = 1,
+          sep = ""
+        ),
+        
+        selectInput(
+          "single_states",
+          "Filter states (optional):",
+          choices = state_choices,
+          multiple = TRUE,
+          selected = NULL
+        ),
+        
+        selectInput(
+          "single_var",
+          "Variable:",
+          choices = single_var_choices
+        ),
+        
+        radioButtons(
+          "single_plot_type",
+          "Plot type:",
+          choices = c(
+            "Histogram / density"    = "dist",
+            "Bar chart (categorical)"= "bar",
+            "Time series (by year)"  = "time"
+          ),
+          selected = "dist"
+        )
+      ),
+      
+      mainPanel(
+        plotOutput("single_plot", height = "500px"),
+        br(),
+        h4("Summary statistics"),
+        verbatimTextOutput("single_summary")
+      )
+    )
+  ))))
 
-
+  
+### End User Interface Section ----------------
+##
+### Begin Server Section ----------------
+server <- function(input, output, session) {
+  ###
+  ### Enter Server Code After this line
+  ###
+  ##add in helpers here 
+  
+  ###create US election map
+  
+  
+  ## 4. Create Single Variable Plot
+  ##
+  
+  ### Clean data and create the base plot
+  ## Check for other inputs and adjust base plot
   
   
   
-  ## SERVER 
-  server <- function(input, output, session) { 
-  
-
-
-    
-    
-    
-    
-  }
   
   
-### End Server Section  
-
-
-  ## Run the app 
-  shinyApp(ui = ui, server = server)
-                       
-                  
-              
-
-                  
+  
+  ## 6. Create 2 Variable Plots
+  ### Clean the data and create the base plot
+  ###
+  ### Create flag variables for is.numeric for x and y
+  ### Replace ... with appropriate variables
+  ### Use flag variables to check what type of data has been selected
+  ### and then add the correct geoms, log scales, and labels.
+  # Are both x and y numeric
+  # log transform y Axis?
+  # Add linear smoother?
+  # end if both numeric
+  # if x is numeric and y is not
+  #
+  # Is x logged
+  #
+  # if y is numeric and x is not
+  #
+  # neither x or y are numeric
+  #
+  
+  
+  
+  
+  
+  
+  
+  ## 7. Create Linear Model Output
+  ### If linear model is selected clean the data
+  ## Check if either variable needs to be transformed and
+  ## then transform the data as required for the Linear Model and create output.
+  
+  
+  
+  
+  ## 8. Create data table for all data with page length 20
+  
+  
+  ##
+  ### Enter Server code above this line
+} # server
+### End Server Section ----------------
+shinyApp(ui, server)

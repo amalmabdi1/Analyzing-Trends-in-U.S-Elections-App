@@ -137,3 +137,56 @@ anes_clean_subset <- anes_subset |>
 
 anes_clean_subset
 ```
+
+```{r}
+#| label: TRUE
+
+govener_df <- read_excel("../data_raw/StateElections_Gub_2012_09_06_Public_Version.xlsx")
+```
+
+```{r}
+govener_subset <- govener_df |>
+  select(
+    state,
+    year,
+    govparty_a,        
+    years_served,      
+    term_length,
+    femgov,            
+    gub_election,     
+    gub_election_regime
+  )
+
+head(govener_subset)
+```
+
+```{r}
+govener_clean_sub <- govener_subset |>
+  filter(year >= 1972) |>
+  mutate(
+    govparty = factor(case_when(
+      govparty_a == 0 ~ "Republican",
+      govparty_a == 1 ~ "Democrat",
+      govparty_a == .5 ~ "Non-major party",
+      TRUE ~ NA_character_)),
+    
+    femgov = case_when(
+      is.na(femgov) ~ NA_character_,
+      femgov == 0   ~ "Male",
+      femgov > 0    ~ "Female"
+    ),
+    
+    term_length = factor(term_length,
+                         levels = c(2, 4),
+                         labels = c("2-year term", "4-year term")),
+    gub_election = factor(gub_election,
+                          levels = c(0, 1),
+                          labels = c("No election", "Election held"))
+  ) |>
+  rename(
+    governor_party = govparty,
+    next_gub_election_year = gub_election_regime
+  )
+    
+head(govener_clean_sub)
+```

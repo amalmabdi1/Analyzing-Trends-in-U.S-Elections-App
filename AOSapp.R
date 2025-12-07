@@ -8,6 +8,7 @@ library(usmap)
 
 
 ## Read in data
+## ANES dataset is individual survey responses 
 anes_df <- read_csv("../data_raw/anes_timeseries_cdf_csv_20220916.csv")
 
 
@@ -176,7 +177,7 @@ govener_clean_sub <- govener_subset |>
 
 head(govener_clean_sub)
 
-govener_map |>
+govener_clean_sub |>
   group_by(state,year) |>
   summarize(n = n())
 
@@ -188,7 +189,7 @@ year_choices <- unique(govener_clean_sub$year) |>
 
 party_choices <- c("Democrat", "Republican", "None-major party")
 
-# need varible for election types
+# need variable for election types
 
 
 
@@ -196,7 +197,8 @@ party_choices <- c("Democrat", "Republican", "None-major party")
 ui <- fluidPage(
   titlePanel("Progress Report Analyzing Trends in U.S Elections (1976-2020))",
   
-  tabsetPanel("National Map Explorer",
+  tabsetPanel(
+    tabPanel("National Map Explorer",
               sidebarLayout(
                 sidebarPanel(
                   h4("Map Controls"),
@@ -211,19 +213,48 @@ ui <- fluidPage(
                   selectInput(
                     "demo_overlay",
                     "Demographic Info:",
-                     choices = c("urban_rural", "age_group", "gender", "race", "education,income")),
+                     choices = c("urban_rural", "age_group", "gender", "race", "education","income")),
                                         
                   ),   
                   
-              mainPael(
+              mainPanel(
                 plotOutput("us_map", height = "500px"),
                 tableOutput("map_summary")
               )))
   
                   
-             
+  # Tab 2: Multivariable Analysis 
+  tabPanel("Multivariable Analysis",
+           h3("Coming soon")
+  ),
+  
+  # Tab 3: Data Summary 
+  tabPanel("Summary",
+           h3("Coming soon")
+     
                   
-                  
+
+
+  
+  
+  
+  ## SERVER 
+  server <- function(input, output, session) { 
+  
+
+
+    
+    
+    
+    
+  }
+  
+  
+### End Server Section  
+
+
+  ## Run the app 
+  shinyApp(ui = ui, server = server)
                        
                   
               

@@ -181,11 +181,12 @@ year_choices <- unique(govener_clean_sub$year) |>
 
 party_choices <- c("Democrat", "Republican", "None-major party")
 
+
 ## Begin User Interface Section ----------------
   
   # ===== TAB 1: U.S. Election Map ===================================
 ui <- fluidPage(
-  titlePanel("Progress Report Analyzing Trends in U.S Elections (1976-2020))",
+  titlePanel("Analyzing Trends in U.S Elections (1976-2020))",
              tabsetPanel(
                tabPanel("National Map Explorer",
                         sidebarLayout(
@@ -351,58 +352,178 @@ server <- function(input, output, session) {
   ### Enter Server Code After this line
   ###
   ##add in helpers here 
+  get_level_df <- function(level) {
+    dplyr::filter(elections_all_dummy, level == !!level)
+  } #helper: pick the right data frame based on election level
   
+  #helper: filter by year and states
+  filter_elections <- function(df, year_range, states = NULL) {
+    df2 <- df |>
+      dplyr::filter(
+        year >= year_range[1],
+        year <= year_range[2]
+      )
+    if (!is.null(states) && length(states) > 0) {
+      df2 <- df2 |>
+        dplyr::filter(state %in% states)
+    }
+    df2
+  }
   ###create US election map
+  map_data <- reactive({
+    df_level <- get_level_df(input$map_level)
+    df_year <- df_level |>
+      dplyr::filter(year == input$map_year)
+    df_year
+  })
   
+  output$us_map <- renderPlot({
+    df <- map_data()
+    req(nrow(df) >0)
+    
+    #MAP CODE HERE 
+    ########
+    })
   
-  ## 4. Create Single Variable Plot
-  ##
+  output$map_summary <- renderTable({
+    df <- map_data()
+    vars <- input$map_info_vars
+    if (is.null(vars) || length(vars) == 0) {
+      vars <- c(#####) #figure out what needs to go here
+    }
+    df |>
+      dyplr::select(state, year, level, dplyr::any_of(vars)) |>
+      head(10)
+  })
+  ## 4. Create Single Var Analysis
+  single_data <- reactive({
+    df_level <- get_level_df(input$single_level)
+    filter_elections(
+      df_level,
+      year_range = input$single_year_range,
+      states = input$single_states
+    )
+  })
   
-  ### Clean data and create the base plot
-  ## Check for other inputs and adjust base plot
+  output$single_plot <- renderPlot({
+    df <- single_data()
+    req(nrow(df) >0)
+    
+    var_name <- input$single_var
+    plot_type <- input$single_plot_type
+    
+    x <- df[[var_name]]
+    
+    if (plot_type == "dist") {
+      #histogram + density for numeric?? check back to this later
+      p <- ggplot(df, aes(x + .data[[var_name]])) +
+        geom_histogram(bins = 15, alpha = 0.7) +
+        geom_density(aes(y = after_stat(..count..)))+
+        labs(x = var_name, y = "Count")
+      
+    } else if (plot_type == "bar"){
+      p <- df |>
+        dplyr::group_by(year) |>
+        dplyr::summarise(
+          value + mean(.data[[var_name]], na.rm = TRUE),
+          .groups = "drop"
+        )
+      p <- ggplot(df_agg, aes(x = year, y = value)) +
+        geom_line() +
+        geom_point() +
+        labs(x = "Year", y = paste("Mean", var_name))
+    }
+    p + theme_minimal()
+  })
   
+  output$single_summary <- renderPrint({
+    df <- single_data()
+    req(nrow(df) > 0)
+    
+    var_name <- input$single_var
+    x<- df[[var_name]]
+    
+    if(is.numeric(x)) {
+      stats <- c(
+        n = sum(!is.na(x)),
+        mean = mean(x, na.rm = TRUE),
+        median = median(x, na.rm = TRUE),
+        sd = sd(x, na.rm = TRUE),
+        min = min(x, na.rm = TRUE),
+        max = max(x, na.rm = TRUE)
+      )
+      print(stats)
+    } else{
+      tab <- prop.table(table(x))
+      print(round(tab, 3))
+    }
+  })
   
-  
-  
-  
-  
+
   ## 6. Create 2 Variable Plots
-  ### Clean the data and create the base plot
-  ###
-  ### Create flag variables for is.numeric for x and y
-  ### Replace ... with appropriate variables
-  ### Use flag variables to check what type of data has been selected
-  ### and then add the correct geoms, log scales, and labels.
-  # Are both x and y numeric
-  # log transform y Axis?
-  # Add linear smoother?
-  # end if both numeric
-  # if x is numeric and y is not
-  #
-  # Is x logged
-  #
-  # if y is numeric and x is not
-  #
-  # neither x or y are numeric
-  #
+  multi_data <- reactive({
+    df_level <- get_level_df(input$multi_level)
+    df_filt <- filter_elections(
+      df_level,
+      year_range = input$multi_year_range,
+      states = input$multi_states
+    )
+    df_filt
+  })
   
+  output$multi_plot <- randerPlot ({
+    df <- multi_data()
+    req(nrow(df) > 0)
+    
+    outcome <- input$multi_outcome
+    predictors <- input$multi_predictors
+    re(length(predictors) >= 1)
+    
+    x_var <- predictors[1]
+    
+    p <- ggplot(df, aes(x = .data[[x_var]], y = .data[[outcome]])) +
+      geom_point(alpha = 0.7) +
+      labs(
+        x = names(demographic_choices)[demographic_choices == x_var],
+        y = names(outcome_choices)[outcome_choices == outcome]
+      )
+    if (input$multi_add_lm) {
+      p <- p + geom_smooth(method = "lm", se = FALSE)
+    }
+    
+    if(input$multi_plot_type == "facet_scatter") {
+      ##region is a placeholder
+      # p <- p + facet_wrap(~ region)
+    } else if (input$multi_plot_type == "grouped_bar") {
+      df <- df |>
+        dplyr::mutate(x_bin + cut(.data[[x_var]], breaks = 4))
+      p <-ggplot(df, aes(x = x_bin, y = .data[[outcome]])) +
+        stat_summary(fun = mean, geom = "bar") +
+        labs(
+          x = paste("Binned",
+                    names(demographic_choices)[demographic_choices == x_var]),
+          y = names(outcome_choices)[outcome_choices == outcome]
+        )
+    }
+    p + theme_minimal()
+  })
   
-  
-  
-  
-  
-  
-  ## 7. Create Linear Model Output
-  ### If linear model is selected clean the data
-  ## Check if either variable needs to be transformed and
-  ## then transform the data as required for the Linear Model and create output.
-  
-  
-  
-  
-  ## 8. Create data table for all data with page length 20
-  
-  
+  output$multi_model_summary <- renderPrint({
+    req(input$multi_add_lm)
+    df <- multi_data()
+    outcome <- input$multi_outcome
+    predictors <- input$multi_predictors
+    req(length(predictors) >= 1)
+    
+    formula_str <- paste(
+      outcome, 
+      "~",
+      paste(predictors, collapse = "+")
+    )
+    model <- lm(as.formula(formula_str), data = df)
+    summary(model)
+  }) 
+  )
   ##
   ### Enter Server code above this line
 } # server

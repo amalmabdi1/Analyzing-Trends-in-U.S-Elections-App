@@ -5,8 +5,11 @@ library(readr)
 library(readxl)
 library(dplyr)
 library(ggplot2)
+library(maps)
+library(plotly)
 
 anes_df <- read_csv("data_raw/anes_timeseries_cdf_csv_20220916.csv")
+us_states_map <- ggplot2::map_data("state")
 
 # subset df with relevant variables
 anes_subset <- anes_df |>
@@ -190,6 +193,22 @@ president_df <- read_csv("president_data_clean.csv")
 senate_df    <- read_csv("data_raw/cleaned_senate_data.csv")
 house_df     <- read_csv("data_raw/house_data_cleaned.csv")
 
+# --- NEW: standardize state + state_po here -----------------------
+standardize_state_vars <- function(df) {
+  df |>
+    mutate(
+      # make sure state_po is uppercase two-letter code
+      state_po = toupper(state_po),
+      # derive canonical full state name from state_po
+      state    = state.name[match(state_po, state.abb)]
+    )
+}
+
+president_df <- standardize_state_vars(president_df)
+senate_df    <- standardize_state_vars(senate_df)
+house_df     <- standardize_state_vars(house_df)
+# -----------------------------------------------------------
+
 # Make House party column roughly comparable to party_simplified
 house_df <- house_df |>
   mutate(
@@ -238,6 +257,62 @@ elections_all_dummy <- bind_rows(
     )
 )
 
+gub_dummy <- govener_clean_sub |>
+  mutate(
+    office          = "GOVERNOR",
+    # convert full state names to postal abbreviations for state_po
+    state_po        = state.abb[match(state, state.name)],
+    candidate       = NA_character_,
+    party_simplified = governor_party,   # rough stand-in
+    candidatevotes  = NA_real_,
+    totalvotes      = NA_real_,
+    level           = "Governor"
+  ) |>
+  select(
+    year, state, state_po,
+    office,
+    candidate,
+    party_simplified,
+    candidatevotes,
+    totalvotes,
+    level
+  )
+
+elections_all_dummy <- bind_rows(elections_all_dummy, gub_dummy)
+
+elections_all_dummy <- elections_all_dummy |>
+  left_join(
+    govener_clean_sub |>
+      select(
+        state,
+        year,
+        governor_party,
+        femgov,
+        term_length,
+        gub_election
+      ),
+    by = c("state", "year")
+  )
+
+anes_state_year <- anes_clean_subset |>
+  group_by(year, state_name) |>
+  summarise(
+    prop_dem_party_id = mean(
+      party_id %in% c("Strong Democrat", "Weak Democrat", "Ind-Democrat"),
+      na.rm = TRUE
+    ),
+    prop_rep_party_id = mean(
+      party_id %in% c("Strong Republican", "Weak Republican", "Ind-Republican"),
+      na.rm = TRUE
+    ),
+    prop_voted = mean(turnout == "Voted", na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  rename(state = state_name)
+
+elections_all_dummy <- elections_all_dummy |>
+  left_join(anes_state_year, by = c("state", "year"))
+
 ## === Choice vectors that were dummies before ===
 
 # Use all election years in your combined dataset
@@ -283,8 +358,6 @@ map_overlay_choices <- c(
 )
 
 ## Begin User Interface Section ----------------
-  
-## Begin User Interface Section ----------------
 
 ui <- fluidPage(
   titlePanel("Analyzing Trends in U.S. Elections (1976–2020)"),
@@ -311,10 +384,12 @@ ui <- fluidPage(
             selected = max(year_choices)
           ),
           
+          # NEW: state filter for non-presidential maps
           selectInput(
-            "map_overlay",
-            "Overlay variable:",
-            choices = map_overlay_choices
+            "map_state",
+            "Filter to state (for non-presidential maps):",
+            choices  = c("All states" = "", state_choices),
+            selected = ""
           ),
           
           selectInput(
@@ -335,7 +410,7 @@ ui <- fluidPage(
           )
         ),
         mainPanel(
-          plotOutput("us_map", height = "500px"),
+          plotlyOutput("us_map", height = "500px"),
           tableOutput("map_summary")
         )
       )
@@ -502,6 +577,17 @@ server <- function(input, output, session) {
   }
   
   # ---- 1. National Map tab ----------------------------------------
+  observeEvent(input$map_level, {
+    df_level <- get_level_df(input$map_level)
+    yrs <- sort(unique(df_level$year))
+    
+    updateSelectInput(
+      session,
+      "map_year",
+      choices  = yrs,
+      selected = max(yrs)
+    )
+  })
   
   map_data <- reactive({
     df_level <- get_level_df(input$map_level)
@@ -509,46 +595,135 @@ server <- function(input, output, session) {
     df_year <- df_level |>
       dplyr::filter(year == input$map_year)
     
-    # Aggregate to one row per state
+    # For non-presidential maps, optionally restrict to selected state
+    if (input$map_level != "President" &&
+        !is.null(input$map_state) &&
+        nzchar(input$map_state)) {
+      df_year <- df_year |>
+        dplyr::filter(state == input$map_state)
+    }
+    
     df_year |>
       dplyr::group_by(state, state_po) |>
       dplyr::summarise(
-        year               = dplyr::first(year),
-        totalvotes         = sum(totalvotes, na.rm = TRUE),
-        candidatevotes     = sum(candidatevotes, na.rm = TRUE),
-        governor_party     = dplyr::first(governor_party),
-        femgov             = dplyr::first(femgov),
-        term_length        = dplyr::first(term_length),
-        gub_election       = dplyr::first(gub_election),
-        prop_dem_party_id  = dplyr::first(prop_dem_party_id),
-        prop_rep_party_id  = dplyr::first(prop_rep_party_id),
-        prop_voted         = dplyr::first(prop_voted),
+        year = dplyr::first(year),
+        
+        # use candidatevotes to define total state votes
+        totalvotes = sum(candidatevotes, na.rm = TRUE),
+        # explicit sums by party so we don't accidentally double-count
+        dem_votes   = sum(candidatevotes[party_simplified == "DEMOCRAT"],   na.rm = TRUE),
+        rep_votes   = sum(candidatevotes[party_simplified == "REPUBLICAN"], na.rm = TRUE),
+        other_votes = sum(candidatevotes[!(party_simplified %in% c("DEMOCRAT", "REPUBLICAN"))],
+                          na.rm = TRUE),
+        
+        # pull any governor / ANES columns if present
+        dplyr::across(
+          dplyr::any_of(c(
+            "governor_party",
+            "femgov",
+            "term_length",
+            "gub_election",
+            "prop_dem_party_id",
+            "prop_rep_party_id",
+            "prop_voted"
+          )),
+          ~ dplyr::first(.x)
+        ),
         .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        winning_party = dplyr::case_when(
+          dem_votes >  rep_votes & dem_votes >= other_votes ~ "DEMOCRAT",
+          rep_votes >  dem_votes & rep_votes >= other_votes ~ "REPUBLICAN",
+          TRUE                                              ~ "OTHER"
+        ),
+        winning_party = factor(
+          winning_party,
+          levels = c("DEMOCRAT", "REPUBLICAN", "OTHER")
+        ),
+        region = tolower(state)   # for join with map polygons
       )
   })
   
-  output$us_map <- renderPlot({
+  output$us_map <- renderPlotly({
     df <- map_data()
     req(nrow(df) > 0)
     
-    overlay_var <- input$map_overlay
+    # Join election data to base map polygons
+    plot_df <- us_states_map |>
+      dplyr::left_join(df, by = "region")
     
-    ggplot(df, aes(
-      x = reorder(state_po, .data[[overlay_var]]),
-      y = .data[[overlay_var]]
-    )) +
-      geom_col() +
-      coord_flip() +
-      labs(
-        x = "State",
-        y = names(map_overlay_choices)[map_overlay_choices == overlay_var],
-        title = paste0(
-          input$map_year, " ",
-          input$map_level, " – ",
-          names(map_overlay_choices)[map_overlay_choices == overlay_var]
+    # Different map behavior for President vs others
+    if (input$map_level == "President") {
+      
+      # COLORED BY WINNING PARTY (President only)
+      p <- ggplot(
+        plot_df,
+        aes(
+          x     = long,
+          y     = lat,
+          group = group,
+          fill  = winning_party,
+          text  = paste0(
+            "State: ", state, "<br>",
+            "Winning party: ", winning_party, "<br>",
+            "Dem votes: ", dem_votes, "<br>",
+            "Rep votes: ", rep_votes, "<br>",
+            "Total votes: ", totalvotes
+          )
         )
       ) +
-      theme_minimal()
+        geom_polygon(color = "white", linewidth = 0.2) +
+        coord_fixed(1.3) +
+        scale_fill_manual(
+          values = c(
+            "DEMOCRAT"   = "#3182bd",  # blue
+            "REPUBLICAN" = "#de2d26",  # red
+            "OTHER"      = "grey70"
+          ),
+          na.value = "grey90",
+          name = "Winning party"
+        ) +
+        labs(
+          title = paste0(
+            input$map_year, " ",
+            input$map_level, " – State winning party"
+          )
+        ) +
+        theme_void()
+      
+    } else {
+      
+      # NEUTRAL MAP (no party colors) for House / Senate / Governor
+      # Only the selected state (if any) will have non-NA tooltip data
+      p <- ggplot(
+        plot_df,
+        aes(
+          x     = long,
+          y     = lat,
+          group = group,
+          text  = paste0(
+            "State: ", state, "<br>",
+            "Total votes: ", totalvotes
+          )
+        )
+      ) +
+        geom_polygon(color = "white", fill = "grey80", linewidth = 0.2) +
+        coord_fixed(1.3) +
+        labs(
+          title = paste0(
+            input$map_year, " ",
+            input$map_level, " – U.S. map"
+          )
+        ) +
+        theme_void() +
+        guides(fill = "none")
+    }
+    
+    ggplotly(p, tooltip = "text") |>
+      layout(
+        margin = list(l = 0, r = 0, t = 50, b = 0)
+      )
   })
   
   output$map_summary <- renderTable({
@@ -557,6 +732,14 @@ server <- function(input, output, session) {
     vars <- input$map_info_vars
     if (is.null(vars) || length(vars) == 0) {
       vars <- c("totalvotes", "prop_dem_party_id", "prop_rep_party_id", "prop_voted")
+    }
+    
+    # For non-presidential maps, if a state is chosen, only show that state
+    if (input$map_level != "President" &&
+        !is.null(input$map_state) &&
+        nzchar(input$map_state)) {
+      df <- df |>
+        dplyr::filter(state == input$map_state)
     }
     
     df |>

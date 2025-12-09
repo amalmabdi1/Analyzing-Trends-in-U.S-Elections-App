@@ -190,8 +190,8 @@ party_choices <- c("Democrat", "Republican", "None-major party")
 
 #president/house/senate data
 president_df <- read_csv("president_data_clean.csv")
-senate_df    <- read_csv("data_raw/cleaned_senate_data.csv")
-house_df     <- read_csv("data_raw/house_data_cleaned.csv")
+senate_df <- read_csv("data_raw/cleaned_senate_data.csv")
+house_df <- read_csv("data_raw/house_data_cleaned.csv")
 
 # --- NEW: standardize state + state_po here -----------------------
 standardize_state_vars <- function(df) {
@@ -259,14 +259,14 @@ elections_all_dummy <- bind_rows(
 
 gub_dummy <- govener_clean_sub |>
   mutate(
-    office          = "GOVERNOR",
+    office = "GOVERNOR",
     # convert full state names to postal abbreviations for state_po
-    state_po        = state.abb[match(state, state.name)],
-    candidate       = NA_character_,
+    state_po = state.abb[match(state, state.name)],
+    candidate = NA_character_,
     party_simplified = governor_party,   # rough stand-in
     candidatevotes  = NA_real_,
-    totalvotes      = NA_real_,
-    level           = "Governor"
+    totalvotes = NA_real_,
+    level  = "Governor"
   ) |>
   select(
     year, state, state_po,
@@ -315,7 +315,7 @@ elections_all_dummy <- elections_all_dummy |>
 
 ## === Choice vectors that were dummies before ===
 
-# Use all election years in your combined dataset
+# Use all election years in combined dataset
 year_choices <- elections_all_dummy$year |>
   unique() |>
   sort()
@@ -325,7 +325,7 @@ election_level_choices <- elections_all_dummy$level |>
   unique() |>
   sort()
 
-#states (using postal abbreviations; switch to `state` if you prefer full names)
+#states
 state_choices <- elections_all_dummy |>
   arrange(state) |>
   pull(state) |>
@@ -338,7 +338,6 @@ outcome_choices <- c(
 )
 
 # "Demographic" / explanatory variables available in these files for now
-# (you can add more once you join ANES or other data)
 demographic_choices <- c(
   "Party (simplified)" = "party_simplified",
   "Office" = "office",
@@ -683,7 +682,7 @@ server <- function(input, output, session) {
       
     } else if (input$map_level %in% c("Senate", "House")) {
       
-      # RED↔BLUE CONTINUOUS SCALE FOR SENATE / HOUSE
+      # RED-BLUE CONTINUOUS SCALE FOR SENATE / HOUSE
       # rep_margin = rep_share - dem_share
       p <- ggplot(
         plot_df,
@@ -706,7 +705,7 @@ server <- function(input, output, session) {
         scale_fill_gradient2(
           low = "blue",  # blue = more Dem
           mid = "purple",
-          high = "red",  # red  = more Rep
+          high = "red",  # red = more Rep
           midpoint = 0,
           name = "Rep margin\n(R - D)"
         ) +

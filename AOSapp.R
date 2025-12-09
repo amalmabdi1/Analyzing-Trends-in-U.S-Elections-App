@@ -7,6 +7,8 @@ library(dplyr)
 library(ggplot2)
 library(maps)
 library(plotly)
+library(scales)
+
 
 anes_df <- read_csv("data_raw/anes_timeseries_cdf_csv_20220916.csv")
 us_states_map <- ggplot2::map_data("state")
@@ -176,10 +178,6 @@ govener_clean_sub <- govener_subset |>
 
 head(govener_clean_sub)
 
-govener_clean_sub |>
-  group_by(state,year) |>
-  summarize(n = n())
-
 
 # these will need to be played with once other is cleaned 
 
@@ -190,8 +188,8 @@ party_choices <- c("Democrat", "Republican", "None-major party")
 
 #president/house/senate data
 president_df <- read_csv("president_data_clean.csv")
-senate_df <- read_csv("data_raw/cleaned_senate_data.csv")
-house_df <- read_csv("data_raw/house_data_cleaned.csv")
+senate_df    <- read_csv("data_raw/cleaned_senate_data.csv")
+house_df     <- read_csv("data_raw/house_data_cleaned.csv")
 
 # --- NEW: standardize state + state_po here -----------------------
 standardize_state_vars <- function(df) {
@@ -259,14 +257,14 @@ elections_all_dummy <- bind_rows(
 
 gub_dummy <- govener_clean_sub |>
   mutate(
-    office = "GOVERNOR",
+    office          = "GOVERNOR",
     # convert full state names to postal abbreviations for state_po
-    state_po = state.abb[match(state, state.name)],
-    candidate = NA_character_,
+    state_po        = state.abb[match(state, state.name)],
+    candidate       = NA_character_,
     party_simplified = governor_party,   # rough stand-in
     candidatevotes  = NA_real_,
-    totalvotes = NA_real_,
-    level  = "Governor"
+    totalvotes      = NA_real_,
+    level           = "Governor"
   ) |>
   select(
     year, state, state_po,
@@ -315,7 +313,7 @@ elections_all_dummy <- elections_all_dummy |>
 
 ## === Choice vectors that were dummies before ===
 
-# Use all election years in combined dataset
+# Use all election years in your combined dataset
 year_choices <- elections_all_dummy$year |>
   unique() |>
   sort()
@@ -325,7 +323,7 @@ election_level_choices <- elections_all_dummy$level |>
   unique() |>
   sort()
 
-#states
+#states (using postal abbreviations; switch to `state` if you prefer full names)
 state_choices <- elections_all_dummy |>
   arrange(state) |>
   pull(state) |>
@@ -338,6 +336,7 @@ outcome_choices <- c(
 )
 
 # "Demographic" / explanatory variables available in these files for now
+# (you can add more once you join ANES or other data)
 demographic_choices <- c(
   "Party (simplified)" = "party_simplified",
   "Office" = "office",
@@ -355,6 +354,8 @@ map_overlay_choices <- c(
   "ANES: share Republican ID" = "prop_rep_party_id",
   "ANES: turnout rate"        = "prop_voted"
 )
+
+state_abb_choices <- setNames(state.abb, state.name)
 
 ## Begin User Interface Section ----------------
 
@@ -385,7 +386,7 @@ ui <- fluidPage(
           
           selectInput(
             "map_state",
-            "Filter to state (for non-presidential maps):",
+            "Filter to state (optional):",
             choices  = c("All states" = "", state_choices),
             selected = ""
           ),
@@ -407,6 +408,7 @@ ui <- fluidPage(
           )
         ),
         mainPanel(
+          h4(textOutput("map_overall_winner")),
           plotlyOutput("us_map", height = "500px"),
           tableOutput("map_summary")
         )
@@ -415,77 +417,7 @@ ui <- fluidPage(
     
     # ===== TAB 2: Multivariable Analysis ============================
     tabPanel(
-      "Multivariable Analysis",
-      sidebarLayout(
-        sidebarPanel(
-          h4("Multivariable Controls"),
-          
-          selectInput(
-            "multi_level",
-            "Election level:",
-            choices = election_level_choices
-          ),
-          
-          sliderInput(
-            "multi_year_range",
-            "Year range:",
-            min   = min(year_choices),
-            max   = max(year_choices),
-            value = c(2000, max(year_choices)),
-            step  = 1,
-            sep   = ""
-          ),
-          
-          selectInput(
-            "multi_states",
-            "Filter states (optional):",
-            choices  = state_choices,
-            multiple = TRUE
-          ),
-          
-          selectInput(
-            "multi_outcome",
-            "Outcome variable:",
-            choices = outcome_choices
-          ),
-          
-          selectInput(
-            "multi_predictors",
-            "Explanatory variable(s):",
-            choices  = demographic_choices,
-            multiple = TRUE
-          ),
-          
-          radioButtons(
-            "multi_plot_type",
-            "Plot type:",
-            choices = c(
-              "Scatterplot"       = "scatter",
-              "Faceted scatter"   = "facet_scatter",
-              "Grouped bar chart" = "grouped_bar"
-            ),
-            selected = "scatter"
-          ),
-          
-          checkboxInput(
-            "multi_add_lm",
-            "Fit linear model (lm)",
-            value = FALSE
-          )
-        ),
-        
-        mainPanel(
-          plotOutput("multi_plot", height = "500px"),
-          br(),
-          h4("Model summary"),
-          verbatimTextOutput("multi_model_summary")
-        )
-      )
-    ),
-    
-    # ===== TAB 3: Single-Variable Analysis ==========================
-    tabPanel(
-      "Single-Variable Analysis",
+      "Multi-Variable Analysis",
       sidebarLayout(
         sidebarPanel(
           h4("Single-variable Controls"),
@@ -508,9 +440,9 @@ ui <- fluidPage(
           
           selectInput(
             "single_states",
-            "Filter states (optional):",
-            choices  = state_choices,
-            multiple = TRUE
+            "Filter by states:",
+            choices  = c("All states" = "", state_choices),
+            selected = ""
           ),
           
           selectInput(
@@ -520,7 +452,7 @@ ui <- fluidPage(
           ),
           
           radioButtons(
-            "single_plot_type",
+            "single_analysis_plot_type",
             "Plot type:",
             choices = c(
               "Histogram / density"     = "dist",
@@ -533,18 +465,158 @@ ui <- fluidPage(
         
         mainPanel(
           plotOutput("single_plot", height = "500px"),
-          br(),
-          h4("Summary statistics"),
           verbatimTextOutput("single_summary")
         )
       )
-    )
+    ),
+    
+    
+    # ===== TAB 3: Single-Variable Analysis ==========================
+    tabPanel(
+      "Single-Variable Analysis",
+      
+      sidebarLayout(
+        
+        sidebarPanel(
+          # Data source switch
+          radioButtons(
+            "single_analysis_data_source",
+            "What do you want to explore?",
+            choices = c(
+              "Public Opinion (ANES)" = "anes",
+              "Election Results" = "results"
+            ),
+            selected = "anes"
+          ),
+          
+          # ANES-only inputs
+          conditionalPanel(
+            condition = "input.single_analysis_data_source == 'anes'",
+            
+            selectInput(
+              "anes_variable",
+              "Public Opinion Metric:",
+              choices = map_overlay_choices,
+              selected = "prop_voted"
+            ),
+            selectInput(
+              "anes_filter",
+              "Filter voters by:",
+              choices = c(
+                "All voters"          = "all",
+                "Black voters"        = "black",
+                "White voters"        = "white",
+                "Hispanic voters"     = "hispanic",
+                "Men"                 = "men",
+                "Women"               = "women",
+                "High school or less" = "lowedu",
+                "Some college or more"= "highedu"
+              ),
+              selected = "all"
+            )
+          ),
+          
+          # Always show year range
+          sliderInput(
+            "single_analysis_year_range",
+            "Year range:",
+            min = min(year_choices),
+            max = max(year_choices),
+            value = c(min(year_choices), max(year_choices)),
+            step = 1
+          ),
+          
+          
+          # Results-only inputs
+          conditionalPanel(
+            condition = "input.single_analysis_data_source == 'results'",
+            
+            selectInput(
+              "single_analysis_level",
+              "Election level:",
+              choices = election_level_choices,
+              selected = "President"
+            ),
+            
+            radioButtons(
+              "results_metric_type",
+              "What do you want to show?",
+              choices = c(
+                "Vote Share" = "share",
+                "Party Winner" = "winner"
+              ),
+              selected = "share"
+            ),
+            
+            selectInput(
+              "single_analysis_states",
+              "Filter by states (max 6):",
+              choices = state_abb_choices,
+              multiple = TRUE
+            ),
+            
+            # Variable selector ONLY for Winner mode
+            conditionalPanel(
+              condition = "input.results_metric_type == 'winner'",
+              selectInput(
+                "single_analysis_variable",
+                "Variable (winner mode only):",
+                choices = single_var_choices
+              )
+            ),
+            
+            radioButtons(
+              "single_analysis_plot_type",
+              "Plot type:",
+              choices = c(
+                "Time Series" = "time",
+                "Bar Graph"   = "bar"
+              ),
+              selected = "time"
+            )
+          ),
+          
+          
+          checkboxInput(
+            "single_analysis_show_narrative",
+            "Show narrative summary",
+            FALSE
+          )
+        ), # END sidebarPanel
+        
+        mainPanel(
+          plotOutput("single_analysis_plot", height = "500px"),
+          verbatimTextOutput("single_analysis_summary"),
+          
+          conditionalPanel(
+            condition = "input.single_analysis_level == 'Governor' &&
+                 (input.single_analysis_variable == 'totalvotes')",
+            div(
+              style = "background-color:#ffdddd; border:1px solid #cc0000;
+              padding:10px; margin-top:10px;",
+              HTML("<strong>Error:</strong> Governor vote counts not available.")
+            )
+          ),
+          
+          conditionalPanel(
+            condition = "input.single_analysis_show_narrative == true",
+            div(
+              style = "background-color:#f0f8ff; border:1px solid #4682b4;
+              padding:10px;",
+              textOutput("single_analysis_narrative")
+              
+              
+            )
+          )
+        )
+      )
+    )  
   )
 )
-
 ## End User Interface Section ----------------
-##
+
 ### Begin Server Section ----------------
+
 server <- function(input, output, session) {
   
   ## Helper: pick the right data frame based on election level
@@ -554,6 +626,7 @@ server <- function(input, output, session) {
   
   ## Helper: filter by year range and optional state list (state_po)
   filter_elections <- function(df, year_range, states = NULL) {
+    
     df2 <- df |>
       dplyr::filter(
         year >= year_range[1],
@@ -564,7 +637,9 @@ server <- function(input, output, session) {
       if ("state_po" %in% names(df2)) {
         df2 <- df2 |>
           dplyr::filter(state_po %in% states)
-      } else if ("state" %in% names(df2)) {
+      } 
+      
+      else if ("state" %in% names(df2)) {
         df2 <- df2 |>
           dplyr::filter(state %in% states)
       }
@@ -592,10 +667,8 @@ server <- function(input, output, session) {
     df_year <- df_level |>
       dplyr::filter(year == input$map_year)
     
-    # For non-presidential maps, optionally restrict to selected state
-    if (input$map_level != "President" &&
-        !is.null(input$map_state) &&
-        nzchar(input$map_state)) {
+    # For ALL maps, optionally restrict to selected state
+    if (!is.null(input$map_state) && nzchar(input$map_state)) {
       df_year <- df_year |>
         dplyr::filter(state == input$map_state)
     }
@@ -631,6 +704,61 @@ server <- function(input, output, session) {
         ),
         region = tolower(state)   # for join with map polygons
       )
+  })
+  
+  # Text showing the winning president (name + party) for President maps
+  output$map_overall_winner <- renderText({
+    #only for pres level
+    if (input$map_level != "President") {
+      return("")
+    }
+    
+    df_level <- get_level_df("President")
+    
+    df_year <- df_level |>
+      dplyr::filter(year == input$map_year)
+    
+    # Apply same optional state filter as map
+    if (!is.null(input$map_state) && nzchar(input$map_state)) {
+      df_year <- df_year |>
+        dplyr::filter(state == input$map_state)
+    }
+    
+    if (nrow(df_year) == 0) {
+      return("No presidential data available for this selection.")
+    }
+    
+    winner_df <- df_year |>
+      dplyr::group_by(candidate, party_simplified) |>
+      dplyr::summarise(
+        votes = sum(candidatevotes, na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      dplyr::arrange(dplyr::desc(votes))
+    
+    if (nrow(winner_df) == 0 || is.na(winner_df$candidate[1])) {
+      return("No presidential winner could be determined for this selection.")
+    }
+    
+    winner       <- winner_df$candidate[1]
+    winner_party <- winner_df$party_simplified[1]
+    
+    party_label <- dplyr::case_when(
+      winner_party == "DEMOCRAT"   ~ "Democrat",
+      winner_party == "REPUBLICAN" ~ "Republican",
+      TRUE                         ~ winner_party
+    )
+    
+    state_suffix <- if (!is.null(input$map_state) && nzchar(input$map_state)) {
+      paste0(" in ", input$map_state)
+    } else {
+      ""
+    }
+    
+    paste0(
+      "Winning president in ", input$map_year, state_suffix,
+      ": ", winner, " (", party_label, ")"
+    )
   })
   
   output$us_map <- renderPlotly({
@@ -682,7 +810,7 @@ server <- function(input, output, session) {
       
     } else if (input$map_level %in% c("Senate", "House")) {
       
-      # RED-BLUE CONTINUOUS SCALE FOR SENATE / HOUSE
+      # RED↔BLUE CONTINUOUS SCALE FOR SENATE / HOUSE
       # rep_margin = rep_share - dem_share
       p <- ggplot(
         plot_df,
@@ -705,7 +833,7 @@ server <- function(input, output, session) {
         scale_fill_gradient2(
           low = "blue",  # blue = more Dem
           mid = "purple",
-          high = "red",  # red = more Rep
+          high = "red",  # red  = more Rep
           midpoint = 0,
           name = "Rep margin\n(R - D)"
         ) +
@@ -757,10 +885,8 @@ server <- function(input, output, session) {
       vars <- c("totalvotes")
     }
     
-    # For non-presidential maps, if a state is chosen, only show that state
-    if (input$map_level != "President" &&
-        !is.null(input$map_state) &&
-        nzchar(input$map_state)) {
+    # For ALL maps, if a state is chosen, only show that state
+    if (!is.null(input$map_state) && nzchar(input$map_state)) {
       df <- df |>
         dplyr::filter(state == input$map_state)
     }
@@ -771,87 +897,354 @@ server <- function(input, output, session) {
       head(20)
   })
   
-  # ---- 2. Single-variable tab -------------------------------------
   
-  single_data <- reactive({
-    df_level <- get_level_df(input$single_level)
-    filter_elections(
-      df_level,
-      year_range = input$single_year_range,
-      states     = input$single_states
-    )
+  
+  # ---- 2. Single Variable Analysis---------------------------------------- 
+  
+  # ================= SINGLE VARIABLE ANALYSIS =======================
+  
+  observeEvent(input$results_metric_type, {
+    if (input$results_metric_type == "share") {
+      updateSelectInput(session, "single_analysis_variable",
+                        selected = "candidatevotes")
+    }
   })
   
-  output$single_plot <- renderPlot({
-    df <- single_data()
-    req(nrow(df) > 0)
+  
+  # --- 1) Reactively filter ANES data ---
+  anes_filtered <- reactive({
+    req(input$single_analysis_data_source == "anes")
     
-    var_name  <- input$single_var
-    plot_type <- input$single_plot_type
+    df <- anes_clean_subset
     
-    x <- df[[var_name]]
+    # ----- Demographic filters -----
+    if (input$anes_filter == "black")    
+      df <- df |> filter(race == "Black")
+    if (input$anes_filter == "white")   
+      df <- df |> filter(race == "White")
+    if (input$anes_filter == "hispanic") 
+      df <- df |> filter(race == "Hispanic")
+    if (input$anes_filter == "men")     
+      df <- df |> filter(gender == "Male")
+    if (input$anes_filter == "women")    
+      df <- df |> filter(gender == "Female")
+    if (input$anes_filter == "lowedu")   
+      df <- df |> filter(education %in% c("Less than high school", "High school"))
+    if (input$anes_filter == "highedu")  
+      df <- df |> filter(education %in% c("Some college", "College or more"))
     
-    if (plot_type == "dist") {
-      if (is.numeric(x)) {
-        # histogram + density for numeric
-        p <- ggplot(df, aes(x = .data[[var_name]])) +
-          geom_histogram(bins = 15, alpha = 0.7) +
-          geom_density(aes(y = after_stat(..count..))) +
-          labs(x = var_name, y = "Count")
-      } else {
-        # basic bar chart for categorical
-        p <- ggplot(df, aes(x = .data[[var_name]])) +
-          geom_bar() +
-          labs(x = var_name, y = "Count")
-      }
+    # ----- Filter by year -----
+    df <- df |>
+      filter(
+        year >= input$single_analysis_year_range[1],
+        year <= input$single_analysis_year_range[2]
+      )
+    
+    # ----- Filter by state (if selected) -----
+    if (!is.null(input$single_analysis_states) &&
+        length(input$single_analysis_states) > 0) {
+      df <- df |>
+        filter(state_name %in% state.name[match(input$single_analysis_states, state.abb)])
+    }
+    
+    df
+  })
+  
+  
+  # --- 2) Reactively filter Election data ---
+  
+  compute_anes_metric <- function(df, var) {
+    if (var == "prop_voted") {
+      as.numeric(df$turnout == "Voted")
+    } else if (var == "prop_dem_party_id") {
+      as.numeric(df$party_id %in% c("Strong Democrat", "Weak Democrat", "Ind-Democrat"))
+    } else if (var == "prop_rep_party_id") {
+      as.numeric(df$party_id %in% c("Strong Republican", "Weak Republican", "Ind-Republican"))
+    } else {
+      rep(NA_real_, nrow(df))
+    }
+  }
+  
+  single_analysis_data <- reactive({
+    req(input$single_analysis_data_source == "results")
+    
+    df_level <- get_level_df(input$single_analysis_level)
+    
+    selected_states <- input$single_analysis_states
+    if (is.null(selected_states) || length(selected_states) == 0) {
+      selected_states <- NULL
+    }
+    
+    filter_elections(
+      df_level,
+      input$single_analysis_year_range,
+      selected_states
+    )
+    
+  }
+  
+  )
+  
+  
+  ## --- Plotting ---
+  ## --- Plotting ---
+  output$single_analysis_plot <- renderPlot({
+    
+    # ---------- ANES MODE ----------
+    if (input$single_analysis_data_source == "anes") {
+      df <- anes_filtered()
+      req(nrow(df) > 0)
       
-    } else if (plot_type == "bar") {
-      df_counts <- df |>
-        dplyr::count(.data[[var_name]], name = "n")
+      var <- input$anes_variable
       
-      p <- ggplot(df_counts, aes(x = .data[[var_name]], y = n)) +
-        geom_col() +
-        labs(x = var_name, y = "Count")
+      df <- df |>
+        mutate(metric = compute_anes_metric(df, var))
       
-    } else if (plot_type == "time") {
       df_agg <- df |>
-        dplyr::group_by(year) |>
-        dplyr::summarise(
-          value = mean(.data[[var_name]], na.rm = TRUE),
+        group_by(year, state_name) |>
+        summarise(
+          val = mean(metric, na.rm = TRUE),
           .groups = "drop"
         )
       
-      p <- ggplot(df_agg, aes(x = year, y = value)) +
-        geom_line() +
-        geom_point() +
-        labs(x = "Year", y = paste("Mean", var_name))
+      p <- ggplot(df_agg, aes(year, val, color = state_name)) +
+        geom_line(linewidth = 1.1) +
+        geom_point(size = 2) +
+        scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+        labs(
+          x = "Election Year",
+          y = "Share of voters",
+          color = "State",
+          title = names(map_overlay_choices)[map_overlay_choices == var]
+        ) +
+        theme_minimal(base_size = 14) +
+        theme(
+          plot.title = element_text(face = "bold"),
+          legend.position = "bottom"
+        )
+      
+      return(p)
     }
     
-    p + theme_minimal()
-  })
-  
-  output$single_summary <- renderPrint({
-    df <- single_data()
+    # ---------- ELECTION RESULTS MODE ----------
+    df <- single_analysis_data()
     req(nrow(df) > 0)
     
-    var_name <- input$single_var
-    x <- df[[var_name]]
+    validate(
+      need(is.null(input$single_analysis_states) ||
+             length(input$single_analysis_states) <= 6,
+           "Please select 6 or fewer states for comparison.")
+    )
     
-    if (is.numeric(x)) {
-      stats <- c(
-        n      = sum(!is.na(x)),
-        mean   = mean(x, na.rm = TRUE),
-        median = median(x, na.rm = TRUE),
-        sd     = sd(x, na.rm = TRUE),
-        min    = min(x, na.rm = TRUE),
-        max    = max(x, na.rm = TRUE)
+    metric_type <- input$results_metric_type
+    plot_type   <- input$single_analysis_plot_type
+    level       <- input$single_analysis_level
+    
+    # Governor: only Party Winner works
+    if (level == "Governor" && metric_type == "share") {
+      validate(
+        need(FALSE, "Governor vote counts unavailable — switch to Party Winner.")
       )
-      print(stats)
+    }
+    
+    # --- Aggregate and calculate winners ---
+    df_metric <- df |>
+      group_by(year, state_po) |>
+      summarise(
+        dem   = sum(candidatevotes[party_simplified == "DEMOCRAT"],   na.rm = TRUE),
+        rep   = sum(candidatevotes[party_simplified == "REPUBLICAN"], na.rm = TRUE),
+        other = sum(candidatevotes[!(party_simplified %in% c("DEMOCRAT","REPUBLICAN"))],
+                    na.rm = TRUE),
+        total = sum(candidatevotes, na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      mutate(
+        dem_share = if_else(total > 0, dem / total, NA_real_),
+        rep_share = if_else(total > 0, rep / total, NA_real_),
+        winner = case_when(
+          dem > rep & dem >= other ~ "DEMOCRAT",
+          rep > dem & rep >= other ~ "REPUBLICAN",
+          TRUE                     ~ "OTHER"
+        )
+      )
+    
+    validate(need(nrow(df_metric) > 0, "No data available for this combination."))
+    
+    # --- Plotting logic ---
+    if (metric_type == "share") {
+      
+      df_long <- df_metric |>
+        select(year, state_po, dem_share, rep_share) |>
+        tidyr::pivot_longer(
+          cols = c(dem_share, rep_share),
+          names_to = "party",
+          values_to = "share"
+        ) |>
+        mutate(
+          party = recode(
+            party,
+            "dem_share" = "DEMOCRAT",
+            "rep_share" = "REPUBLICAN"
+          )
+        )
+      
+      if (plot_type == "time") {
+        
+        p <- ggplot(df_long,
+                    aes(x = year, y = share, color = party)) +
+          geom_line(linewidth = 1.1) +
+          geom_point(size = 2) +
+          facet_wrap(~ state_po, scales = "free_y") +
+          scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+          scale_color_manual(values = c(
+            "DEMOCRAT"   = "#0059ff",
+            "REPUBLICAN" = "#ff0000"
+          )) +
+          labs(
+            title = "Vote Share by Party and State",
+            x = "Election Year", y = "Vote Share (%)",
+            color = "Party"
+          )
+        
+      } else if (plot_type == "bar") {
+        
+        p <- ggplot(df_long,
+                    aes(x = factor(year), y = share, fill = party)) +
+          geom_col(position = "dodge") +
+          facet_wrap(~ state_po, scales = "free_y") +
+          scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+          scale_fill_manual(values = c(
+            "DEMOCRAT"   = "#0059ff",
+            "REPUBLICAN" = "#ff0000"
+          )) +
+          labs(
+            title = "Year-wise Comparison of Vote Share",
+            x = "Election Year", y = "Vote Share (%)",
+            fill = "Party"
+          )
+      }
+      
+    } else if (metric_type == "winner") {
+      
+      if (plot_type == "time") {
+        
+        p <- ggplot(df_metric,
+                    aes(x = year, y = 1, fill = winner)) +
+          geom_tile(color = "white") +
+          facet_wrap(~ state_po) +
+          scale_fill_manual(values = c(
+            "DEMOCRAT"   = "#0059ff",
+            "REPUBLICAN" = "#ff0000",
+            "OTHER"      = "#800080"
+          )) +
+          labs(
+            title = "Winning Party by Year and State",
+            x = "Election Year", y = "",
+            fill = "Winner"
+          ) +
+          theme(
+            axis.text.y  = element_blank(),
+            axis.ticks.y = element_blank()
+          )
+        
+      } else if (plot_type == "bar") {
+        
+        p <- ggplot(df_metric,
+                    aes(x = winner, fill = winner)) +
+          geom_bar() +
+          labs(
+            title = "Party Winner Count",
+            x = "Winning Party",
+            y = "Number of Elections",
+            fill = "Party"
+          ) +
+          scale_fill_manual(values = c(
+            "DEMOCRAT"   = "#0059ff",
+            "REPUBLICAN" = "#ff0000",
+            "OTHER"      = "#800080"
+          ))
+      }
+    }
+    
+    # --- Final display ---
+    p +
+      theme_minimal(base_size = 15) +
+      theme(
+        plot.title  = element_text(face = "bold", hjust = 0.5),
+        strip.text  = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+      )
+    
+  })
+  
+  # --- 4) Summary Output ---
+  output$single_analysis_summary <- renderPrint({
+    
+    if (input$single_analysis_data_source == "anes") {
+      df  <- anes_filtered()
+      var <- input$anes_variable
+      
+      df <- df |>
+        mutate(metric = compute_anes_metric(df, var))
+      
+      df_agg <- df |>
+        group_by(year) |>
+        summarise(val = mean(metric, na.rm = TRUE), .groups = "drop")
+      
+      print(df_agg)
+      return()
+    }
+    
+    # Only show summary in winner mode
+    if (input$results_metric_type == "winner") {
+      df <- single_analysis_data()
+      var_name <- input$single_analysis_variable
+      x <- df[[var_name]]
+      
+      if (is.numeric(x)) summary(x, na.rm = TRUE)
+      else print(table(x))
     } else {
-      tab <- prop.table(table(x))
-      print(round(tab, 3))
+      cat("Summary statistics available in Party Winner mode only.\n")
     }
   })
+  
+  
+  
+  # --- 5) Narrative Output ---
+  output$single_analysis_narrative <- renderText({
+    req(input$single_analysis_show_narrative)
+    
+    if (input$single_analysis_data_source == "anes") {
+      df  <- anes_filtered()
+      var <- input$anes_variable
+      
+      df <- df |>
+        mutate(metric = compute_anes_metric(df, var))
+      
+      df_agg <- df |>
+        group_by(year) |>
+        summarise(val = mean(metric, na.rm = TRUE), .groups = "drop")
+      
+      change <- round((dplyr::last(df_agg$val) - dplyr::first(df_agg$val)) * 100, 1)
+      
+      return(
+        paste0(
+          names(map_overlay_choices)[map_overlay_choices == var],
+          " changed by ", change,
+          " percentage points from ", dplyr::first(df_agg$year),
+          " to ", dplyr::last(df_agg$year), "."
+        )
+      )
+    }
+    
+    if (input$results_metric_type == "winner") {
+      paste("Summary narrative for", input$single_analysis_variable)
+    } else {
+      paste("Narrative summary available in Party Winner mode only.")
+    }
+  })
+  
+  
   
   # ---- 3. Multivariable tab ---------------------------------------
   
@@ -924,8 +1317,9 @@ server <- function(input, output, session) {
     
     model <- lm(as.formula(formula_str), data = df)
     summary(model)
+    
   })
-}
-### End Server Section ----------------
+  
+} # <-- Single closing brace for server function
 
 shinyApp(ui, server)

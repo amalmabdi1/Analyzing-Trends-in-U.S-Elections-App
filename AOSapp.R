@@ -203,8 +203,8 @@ standardize_state_vars <- function(df) {
 }
 
 president_df <- standardize_state_vars(president_df)
-senate_df    <- standardize_state_vars(senate_df)
-house_df     <- standardize_state_vars(house_df)
+senate_df <- standardize_state_vars(senate_df)
+house_df <- standardize_state_vars(house_df)
 # -----------------------------------------------------------
 
 # Make House party column roughly comparable to party_simplified
@@ -246,7 +246,7 @@ elections_all_dummy <- bind_rows(
     select(
       year, state, state_po,
       office,
-      district,         # only exists for House
+      district, #only exists for House
       candidate,
       party_simplified,
       candidatevotes,
@@ -261,7 +261,7 @@ gub_dummy <- govener_clean_sub |>
     # convert full state names to postal abbreviations for state_po
     state_po = state.abb[match(state, state.name)],
     candidate = NA_character_,
-    party_simplified = governor_party,   # rough stand-in
+    party_simplified = governor_party,
     candidatevotes = NA_real_,
     totalvotes = NA_real_,
     level = "Governor"
@@ -311,7 +311,7 @@ anes_state_year <- anes_clean_subset |>
 elections_all_dummy <- elections_all_dummy |>
   left_join(anes_state_year, by = c("state", "year"))
 
-## === Choice vectors that were dummies before ===
+## ======
 
 # Use all election years in your combined dataset
 year_choices <- elections_all_dummy$year |>
@@ -350,9 +350,9 @@ single_var_choices <- c(
   "Party (simplified)" = "party_simplified"
 )
 map_overlay_choices <- c(
-  "ANES: share Democrat ID"   = "prop_dem_party_id",
+  "ANES: share Democrat ID" = "prop_dem_party_id",
   "ANES: share Republican ID" = "prop_rep_party_id",
-  "ANES: turnout rate"        = "prop_voted"
+  "ANES: turnout rate" = "prop_voted"
 )
 
 state_abb_choices <- setNames(state.abb, state.name)
@@ -373,14 +373,14 @@ ui <- fluidPage(
           selectInput(
             "map_level",
             "Election level:",
-            choices  = c("President", "Senate", "House"),
+            choices = c("President", "Senate", "House"),
             selected = "President"
           ),
           
           selectInput(
             "map_year",
             "Select year:",
-            choices  = year_choices,
+            choices = year_choices,
             selected = max(year_choices)
           ),
           
@@ -394,7 +394,7 @@ ui <- fluidPage(
           selectInput(
             "map_info_vars",
             "Extra columns in summary table:",
-            choices  = c(
+            choices = c(
               "totalvotes",
               "candidatevotes",
               "dem_votes",
@@ -434,11 +434,11 @@ ui <- fluidPage(
           sliderInput(
             "multi_year_range",
             "Year range:",
-            min   = min(year_choices),
-            max   = max(year_choices),
+            min = min(year_choices),
+            max = max(year_choices),
             value = c(1990, max(year_choices)),
-            step  = 1,
-            sep   = ""
+            step = 1,
+            sep  = ""
           ),
           
           # Optional state filter
@@ -454,10 +454,10 @@ ui <- fluidPage(
             "multi_outcome",
             "Outcome variable (Y-axis):",
             choices = c(
-              "Total votes"                        = "totalvotes",
-              "Republican vote share (R / total)"  = "rep_share",
-              "Democratic vote share (D / total)"  = "dem_share",
-              "Republican margin (R - D)"          = "rep_margin"
+              "Total votes" = "totalvotes",
+              "Republican vote share (R / total)" = "rep_share",
+              "Democratic vote share (D / total)" = "dem_share",
+              "Republican margin (R - D)" = "rep_margin"
             ),
             selected = "rep_margin"
           ),
@@ -467,12 +467,12 @@ ui <- fluidPage(
             "multi_predictors",
             "Explanatory variable(s) (first is X-axis):",
             choices = c(
-              "ANES: turnout rate"        = "prop_voted",
-              "ANES: share Democrat ID"   = "prop_dem_party_id",
+              "ANES: turnout rate" = "prop_voted",
+              "ANES: share Democrat ID" = "prop_dem_party_id",
               "ANES: share Republican ID" = "prop_rep_party_id",
-              "Governor party"            = "governor_party",
-              "State"                     = "state",
-              "Year"                      = "year"
+              "Governor party" = "governor_party",
+              "State" = "state",
+              "Year" = "year"
             ),
             multiple = TRUE,
             selected = c("prop_dem_party_id", "prop_voted")
@@ -483,9 +483,9 @@ ui <- fluidPage(
             "multi_color_by",
             "Color by (optional):",
             choices = c(
-              "None"          = "",
+              "None" = "",
               "Governor party" = "governor_party",
-              "State"          = "state"
+              "State" = "state"
             ),
             selected = "governor_party"
           ),
@@ -495,9 +495,9 @@ ui <- fluidPage(
             "multi_plot_type",
             "Plot type:",
             choices = c(
-              "Scatterplot"        = "scatter",
+              "Scatterplot" = "scatter",
               "Scatter, faceted by state" = "facet_state",
-              "Grouped boxplot"    = "box"
+              "Grouped boxplot" = "box"
             ),
             selected = "scatter"
           ),
@@ -661,7 +661,7 @@ ui <- fluidPage(
         )
       )
     ),
-#---------stat test UI-------------
+    #---------stat test UI-------------
     tabPanel(
       "Statistical Tests",
       sidebarLayout(
@@ -831,7 +831,7 @@ server <- function(input, output, session) {
       return("No presidential winner could be determined for this selection.")
     }
     
-    winner       <- winner_df$candidate[1]
+    winner <- winner_df$candidate[1]
     winner_party <- winner_df$party_simplified[1]
     
     party_label <- dplyr::case_when(
@@ -944,7 +944,7 @@ server <- function(input, output, session) {
           x = long,
           y = lat,
           group = group,
-          text  = paste0(
+          text = paste0(
             "State: ", state, "<br>",
             "Total votes: ", totalvotes
           )
@@ -1380,11 +1380,11 @@ server <- function(input, output, session) {
     df <- multi_data()
     req(nrow(df) > 0)
     
-    outcome    <- input$multi_outcome
-    preds      <- input$multi_predictors
+    outcome <- input$multi_outcome
+    preds <- input$multi_predictors
     req(length(preds) >= 1)
     
-    x_var      <- preds[1]
+    x_var <- preds[1]
     color_var  <- input$multi_color_by
     plot_type  <- input$multi_plot_type
     
@@ -1448,7 +1448,7 @@ server <- function(input, output, session) {
         x = x_lab,
         y = y_lab,
         color = if (!is.null(color_var) && nzchar(color_var)) color_var else NULL,
-        fill  = if (!is.null(color_var) && nzchar(color_var)) color_var else NULL
+        fill = if (!is.null(color_var) && nzchar(color_var)) color_var else NULL
       ) +
       theme_minimal()
   })
@@ -1509,9 +1509,9 @@ server <- function(input, output, session) {
         ) |>
         dplyr::group_by(state, year) |>
         dplyr::summarize(
-          totalvotes  = sum(candidatevotes, na.rm = TRUE),
-          dem_votes   = sum(candidatevotes[party_simplified == "DEMOCRAT"],   na.rm = TRUE),
-          rep_votes   = sum(candidatevotes[party_simplified == "REPUBLICAN"], na.rm = TRUE),
+          totalvotes = sum(candidatevotes, na.rm = TRUE),
+          dem_votes = sum(candidatevotes[party_simplified == "DEMOCRAT"],   na.rm = TRUE),
+          rep_votes = sum(candidatevotes[party_simplified == "REPUBLICAN"], na.rm = TRUE),
           other_votes = sum(candidatevotes[!(party_simplified %in% c("DEMOCRAT", "REPUBLICAN"))],
                             na.rm = TRUE),
           .groups = "drop"

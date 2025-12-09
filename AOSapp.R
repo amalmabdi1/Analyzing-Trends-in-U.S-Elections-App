@@ -373,7 +373,7 @@ ui <- fluidPage(
           selectInput(
             "map_level",
             "Election level:",
-            choices  = election_level_choices,
+            choices  = c("President", "Senate", "House"),
             selected = "President"
           ),
           
@@ -384,7 +384,6 @@ ui <- fluidPage(
             selected = max(year_choices)
           ),
           
-          # NEW: state filter for non-presidential maps
           selectInput(
             "map_state",
             "Filter to state (for non-presidential maps):",
@@ -398,13 +397,12 @@ ui <- fluidPage(
             choices  = c(
               "totalvotes",
               "candidatevotes",
-              "governor_party",
-              "femgov",
-              "term_length",
-              "gub_election",
-              "prop_dem_party_id",
-              "prop_rep_party_id",
-              "prop_voted"
+              "dem_votes",
+              "rep_votes",
+              "other_votes",
+              "rep_share",
+              "dem_share",
+              "rep_margin"
             ),
             multiple = TRUE
           )
@@ -611,31 +609,22 @@ server <- function(input, output, session) {
         # use candidatevotes to define total state votes
         totalvotes = sum(candidatevotes, na.rm = TRUE),
         # explicit sums by party so we don't accidentally double-count
-        dem_votes   = sum(candidatevotes[party_simplified == "DEMOCRAT"],   na.rm = TRUE),
-        rep_votes   = sum(candidatevotes[party_simplified == "REPUBLICAN"], na.rm = TRUE),
+        dem_votes = sum(candidatevotes[party_simplified == "DEMOCRAT"],   na.rm = TRUE),
+        rep_votes = sum(candidatevotes[party_simplified == "REPUBLICAN"], na.rm = TRUE),
         other_votes = sum(candidatevotes[!(party_simplified %in% c("DEMOCRAT", "REPUBLICAN"))],
-                          na.rm = TRUE),
-        
-        # pull any governor / ANES columns if present
-        dplyr::across(
-          dplyr::any_of(c(
-            "governor_party",
-            "femgov",
-            "term_length",
-            "gub_election",
-            "prop_dem_party_id",
-            "prop_rep_party_id",
-            "prop_voted"
-          )),
-          ~ dplyr::first(.x)
-        ),
-        .groups = "drop"
+                          na.rm = TRUE)
       ) |>
       dplyr::mutate(
+        # vote shares
+        rep_share  = dplyr::if_else(totalvotes > 0, rep_votes / totalvotes, NA_real_),
+        dem_share  = dplyr::if_else(totalvotes > 0, dem_votes / totalvotes, NA_real_),
+        rep_margin = rep_share - dem_share,   # R - D
+        
+        # winning party (used for President coloring)
         winning_party = dplyr::case_when(
           dem_votes >  rep_votes & dem_votes >= other_votes ~ "DEMOCRAT",
           rep_votes >  dem_votes & rep_votes >= other_votes ~ "REPUBLICAN",
-          TRUE                                              ~ "OTHER"
+          TRUE ~ "OTHER"
         ),
         winning_party = factor(
           winning_party,
@@ -660,8 +649,8 @@ server <- function(input, output, session) {
       p <- ggplot(
         plot_df,
         aes(
-          x     = long,
-          y     = lat,
+          x = long,
+          y = lat,
           group = group,
           fill  = winning_party,
           text  = paste0(
@@ -677,9 +666,9 @@ server <- function(input, output, session) {
         coord_fixed(1.3) +
         scale_fill_manual(
           values = c(
-            "DEMOCRAT"   = "#3182bd",  # blue
-            "REPUBLICAN" = "#de2d26",  # red
-            "OTHER"      = "grey70"
+            "DEMOCRAT" = "blue",  # blue
+            "REPUBLICAN" = "red",  # red
+            "OTHER" = "grey70"
           ),
           na.value = "grey90",
           name = "Winning party"
@@ -692,15 +681,50 @@ server <- function(input, output, session) {
         ) +
         theme_void()
       
-    } else {
+    } else if (input$map_level %in% c("Senate", "House")) {
       
-      # NEUTRAL MAP (no party colors) for House / Senate / Governor
-      # Only the selected state (if any) will have non-NA tooltip data
+      # RED↔BLUE CONTINUOUS SCALE FOR SENATE / HOUSE
+      # rep_margin = rep_share - dem_share
       p <- ggplot(
         plot_df,
         aes(
-          x     = long,
-          y     = lat,
+          x = long,
+          y = lat,
+          group = group,
+          fill = rep_margin,
+          text = paste0(
+            "State: ", state, "<br>",
+            "Rep share: ", round(rep_share, 3), "<br>",
+            "Dem share: ", round(dem_share, 3), "<br>",
+            "Rep margin (R - D): ", round(rep_margin, 3), "<br>",
+            "Total votes: ", totalvotes
+          )
+        )
+      ) +
+        geom_polygon(color = "white", linewidth = 0.2) +
+        coord_fixed(1.3) +
+        scale_fill_gradient2(
+          low = "blue",  # blue = more Dem
+          mid = "purple",
+          high = "red",  # red  = more Rep
+          midpoint = 0,
+          name = "Rep margin\n(R - D)"
+        ) +
+        labs(
+          title = paste0(
+            input$map_year, " ",
+            input$map_level, " – Republican vs Democrat vote share"
+          )
+        ) +
+        theme_void()
+      
+    } else {
+      # Fallback neutral map
+      p <- ggplot(
+        plot_df,
+        aes(
+          x = long,
+          y = lat,
           group = group,
           text  = paste0(
             "State: ", state, "<br>",
@@ -731,7 +755,7 @@ server <- function(input, output, session) {
     
     vars <- input$map_info_vars
     if (is.null(vars) || length(vars) == 0) {
-      vars <- c("totalvotes", "prop_dem_party_id", "prop_rep_party_id", "prop_voted")
+      vars <- c("totalvotes")
     }
     
     # For non-presidential maps, if a state is chosen, only show that state

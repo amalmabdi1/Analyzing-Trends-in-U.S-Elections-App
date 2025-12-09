@@ -2,6 +2,9 @@ library(reader)
 library(dplyr)
 
 anes_df <- read_csv("../data_raw/anes_timeseries_cdf_csv_20220916.csv")
+president_df <- read_csv("../../president_data_clean.csv")
+
+
 
 
 # subset df with relevant variables
@@ -214,6 +217,7 @@ ui <- fluidPage(
                           )
                         ),
   
+               
   # ===== TAB 2: Multivariable Analysis ===============================
   #leaving space for the other datasets by using filler dummy variables
   tabPanel(
@@ -310,7 +314,7 @@ ui <- fluidPage(
         
         selectInput(
           "single_states",
-          "Filter states (optional):",
+          "Filter by states:",
           choices = state_choices,
           multiple = TRUE,
           selected = NULL

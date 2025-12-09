@@ -8,7 +8,7 @@ editor: visual
 library(tidyverse)
 ```
 
-## Clean Up For Anes dataset 
+## Clean Up For Anes dataset
 
 ```{r}
 

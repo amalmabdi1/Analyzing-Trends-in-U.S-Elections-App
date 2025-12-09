@@ -1,11 +1,11 @@
 library(reader)
 library(dplyr)
+library(shiny)
+library(readr)
+library(readxl)
+library(ggplot2)
 
-anes_df <- read_csv("../data_raw/anes_timeseries_cdf_csv_20220916.csv")
-president_df <- read_csv("../../president_data_clean.csv")
-
-
-
+anes_df <- read_csv("data_raw/anes_timeseries_cdf_csv_20220916.csv")
 
 # subset df with relevant variables
 anes_subset <- anes_df |>
@@ -125,7 +125,7 @@ anes_clean_subset <- anes_subset |>
 
 # Read in data 
 
-govener_df <- read_excel("../data_raw/StateElections_Gub_2012_09_06_Public_Version.xlsx")
+govener_df <- read_excel("data_raw/StateElections_Gub_2012_09_06_Public_Version.xlsx")
 
 # subset data 
 govener_subset <- govener_df |>
@@ -184,259 +184,477 @@ year_choices <- unique(govener_clean_sub$year) |>
 
 party_choices <- c("Democrat", "Republican", "None-major party")
 
+#president/house/senate data
+president_df <- read_csv("president_data_clean.csv")
+senate_df    <- read_csv("data_raw/cleaned_senate_data.csv")
+house_df     <- read_csv("data_raw/house_data_cleaned.csv")
+
+# Make House party column roughly comparable to party_simplified
+house_df <- house_df |>
+  mutate(
+    party_simplified = case_when(
+      party %in% c("DEMOCRAT", "Democrat", "DEMOCRATIC") ~ "DEMOCRAT",
+      party %in% c("REPUBLICAN", "Republican") ~ "REPUBLICAN",
+      TRUE ~ "OTHER"
+    )
+  )
+
+# Stack into one long elections df with a "level" column
+elections_all_dummy <- bind_rows(
+  president_df |>
+    mutate(level = "President") |>
+    select(
+      year, state, state_po,
+      office,
+      candidate,
+      party_simplified,
+      candidatevotes,
+      totalvotes,
+      level
+    ),
+  senate_df |>
+    mutate(level = "Senate") |>
+    select(
+      year, state, state_po,
+      office,
+      candidate,
+      party_simplified,
+      candidatevotes,
+      totalvotes,
+      level
+    ),
+  house_df |>
+    mutate(level = "House") |>
+    select(
+      year, state, state_po,
+      office,
+      district,         # only exists for House
+      candidate,
+      party_simplified,
+      candidatevotes,
+      totalvotes,
+      level
+    )
+)
+
+## === Choice vectors that were dummies before ===
+
+# Use all election years in your combined dataset
+year_choices <- elections_all_dummy$year |>
+  unique() |>
+  sort()
+
+# Election level selector
+election_level_choices <- elections_all_dummy$level |>
+  unique() |>
+  sort()
+
+#states (using postal abbreviations; switch to `state` if you prefer full names)
+state_choices <- elections_all_dummy |>
+  arrange(state) |>
+  pull(state) |>
+  unique()
+
+# Outcome variables for the multivariable tab
+outcome_choices <- c(
+  "Total votes" = "totalvotes",
+  "Candidate votes" = "candidatevotes"
+)
+
+# "Demographic" / explanatory variables available in these files for now
+# (you can add more once you join ANES or other data)
+demographic_choices <- c(
+  "Party (simplified)" = "party_simplified",
+  "Office" = "office",
+  "State (full name)" = "state"
+)
+
+# Variables allowed on the single-variable tab
+single_var_choices <- c(
+  "Total votes" = "totalvotes",
+  "Candidate votes" = "candidatevotes",
+  "Party (simplified)" = "party_simplified"
+)
+map_overlay_choices <- c(
+  "ANES: share Democrat ID"   = "prop_dem_party_id",
+  "ANES: share Republican ID" = "prop_rep_party_id",
+  "ANES: turnout rate"        = "prop_voted"
+)
 
 ## Begin User Interface Section ----------------
-  
-  # ===== TAB 1: U.S. Election Map ===================================
-ui <- fluidPage(
-  titlePanel("Analyzing Trends in U.S Elections (1976-2020))",
-             tabsetPanel(
-               tabPanel("National Map Explorer",
-                        sidebarLayout(
-                            sidebarPanel(
-                              h4("Map Controls"),
-                              
-                              selectInput(
-                                "year",
-                                "Select Year: ",
-                                choices = year_choices),
-                              
-                              
-                              
-                              selectInput(
-                                "demo_overlay",
-                                "Demographic Info:",
-                                choices = c("urban_rural", "age_group", "gender", "race", "education","income")),
-                              
-                            ),   
-                            
-                            mainPanel(
-                              plotOutput("us_map", height = "500px"),
-                              tableOutput("map_summary")
-                            )
-                          )
-                        ),
-  
-               
-  # ===== TAB 2: Multivariable Analysis ===============================
-  #leaving space for the other datasets by using filler dummy variables
-  tabPanel(
-    "Multivariable Analysis",
-    sidebarLayout(
-      sidebarPanel(
-        h4("Multivariable Controls"),
-        
-        selectInput(
-          "multi_level",
-          "Election level:",
-          choices = election_level_choices
-        ),
-        
-        sliderInput(
-          "multi_year_range",
-          "Year range:",
-          min = min(year_choices),
-          max = max(year_choices),
-          value = c(2000, max(year_choices)),
-          step = 1,
-          sep = ""
-        ),
-        
-        selectInput(
-          "multi_states",
-          "Filter states (optional):",
-          choices = state_choices,
-          multiple = TRUE
-        ),
-        
-        selectInput(
-          "multi_outcome",
-          "Outcome variable:",
-          choices = outcome_choices,
-        ),
-        
-        selectInput(
-          "multi_predictors",
-          "Explanatory variable(s):",
-          choices = demographic_choices,
-          multiple = TRUE
-        ),
-        
-        radioButtons(
-          "multi_plot_type",
-          "Plot type:",
-          choices = c(
-            "Scatterplot" = "scatter",
-            "Faceted scatter by region" = "facet_scatter", #region is dummy for now
-            "Grouped bar chart" = "grouped_bar"
-          ),
-          selected = "scatter"
-        ),
-        
-        checkboxInput(
-          "multi_add_lm",
-          "Fit linear model (lm)",
-          value = FALSE
-        )
-      ),
-      
-      mainPanel(
-        plotOutput("multi_plot", height = "500px"),
-        br(),
-        h4("Model summary"),
-        verbatimTextOutput("multi_model_summary")
-      )
-    )
-  ),
-  
-#=======TAB 3: Single Var Analysis=======
-  tabPanel(
-    "Single-Variable Analysis",
-    sidebarLayout(
-      sidebarPanel(
-        h4("Single-variable Controls"),
-        
-        selectInput(
-          "single_level",
-          "Election level:",
-          choices = election_level_choices
-        ),
-        
-        sliderInput(
-          "single_year_range",
-          "Year range:",
-          min = min(year_choices),
-          max = max(year_choices),
-          value = c(2000, max(year_choices)),
-          step = 1,
-          sep = ""
-        ),
-        
-        selectInput(
-          "single_states",
-          "Filter by states:",
-          choices = state_choices,
-          multiple = TRUE,
-          selected = NULL
-        ),
-        
-        selectInput(
-          "single_var",
-          "Variable:",
-          choices = single_var_choices
-        ),
-        
-        radioButtons(
-          "single_plot_type",
-          "Plot type:",
-          choices = c(
-            "Histogram / density"    = "dist",
-            "Bar chart (categorical)"= "bar",
-            "Time series (by year)"  = "time"
-          ),
-          selected = "dist"
-        )
-      ),
-      
-      mainPanel(
-        plotOutput("single_plot", height = "500px"),
-        br(),
-        h4("Summary statistics"),
-        verbatimTextOutput("single_summary")
-      )
-    )
-  ))))
 
+## Begin User Interface Section ----------------
+
+ui <- fluidPage(
+  titlePanel("Analyzing Trends in U.S. Elections (1976–2020)"),
   
-### End User Interface Section ----------------
+  tabsetPanel(
+    # ===== TAB 1: U.S. Election Map =================================
+    tabPanel(
+      "National Map Explorer",
+      sidebarLayout(
+        sidebarPanel(
+          h4("Map Controls"),
+          
+          selectInput(
+            "map_level",
+            "Election level:",
+            choices  = election_level_choices,
+            selected = "President"
+          ),
+          
+          selectInput(
+            "map_year",
+            "Select year:",
+            choices  = year_choices,
+            selected = max(year_choices)
+          ),
+          
+          selectInput(
+            "map_overlay",
+            "Overlay variable:",
+            choices = map_overlay_choices
+          ),
+          
+          selectInput(
+            "map_info_vars",
+            "Extra columns in summary table:",
+            choices  = c(
+              "totalvotes",
+              "candidatevotes",
+              "governor_party",
+              "femgov",
+              "term_length",
+              "gub_election",
+              "prop_dem_party_id",
+              "prop_rep_party_id",
+              "prop_voted"
+            ),
+            multiple = TRUE
+          )
+        ),
+        mainPanel(
+          plotOutput("us_map", height = "500px"),
+          tableOutput("map_summary")
+        )
+      )
+    ),
+    
+    # ===== TAB 2: Multivariable Analysis ============================
+    tabPanel(
+      "Multivariable Analysis",
+      sidebarLayout(
+        sidebarPanel(
+          h4("Multivariable Controls"),
+          
+          selectInput(
+            "multi_level",
+            "Election level:",
+            choices = election_level_choices
+          ),
+          
+          sliderInput(
+            "multi_year_range",
+            "Year range:",
+            min   = min(year_choices),
+            max   = max(year_choices),
+            value = c(2000, max(year_choices)),
+            step  = 1,
+            sep   = ""
+          ),
+          
+          selectInput(
+            "multi_states",
+            "Filter states (optional):",
+            choices  = state_choices,
+            multiple = TRUE
+          ),
+          
+          selectInput(
+            "multi_outcome",
+            "Outcome variable:",
+            choices = outcome_choices
+          ),
+          
+          selectInput(
+            "multi_predictors",
+            "Explanatory variable(s):",
+            choices  = demographic_choices,
+            multiple = TRUE
+          ),
+          
+          radioButtons(
+            "multi_plot_type",
+            "Plot type:",
+            choices = c(
+              "Scatterplot"       = "scatter",
+              "Faceted scatter"   = "facet_scatter",
+              "Grouped bar chart" = "grouped_bar"
+            ),
+            selected = "scatter"
+          ),
+          
+          checkboxInput(
+            "multi_add_lm",
+            "Fit linear model (lm)",
+            value = FALSE
+          )
+        ),
+        
+        mainPanel(
+          plotOutput("multi_plot", height = "500px"),
+          br(),
+          h4("Model summary"),
+          verbatimTextOutput("multi_model_summary")
+        )
+      )
+    ),
+    
+    # ===== TAB 3: Single-Variable Analysis ==========================
+    tabPanel(
+      "Single-Variable Analysis",
+      sidebarLayout(
+        sidebarPanel(
+          h4("Single-variable Controls"),
+          
+          selectInput(
+            "single_level",
+            "Election level:",
+            choices = election_level_choices
+          ),
+          
+          sliderInput(
+            "single_year_range",
+            "Year range:",
+            min   = min(year_choices),
+            max   = max(year_choices),
+            value = c(2000, max(year_choices)),
+            step  = 1,
+            sep   = ""
+          ),
+          
+          selectInput(
+            "single_states",
+            "Filter states (optional):",
+            choices  = state_choices,
+            multiple = TRUE
+          ),
+          
+          selectInput(
+            "single_var",
+            "Variable:",
+            choices = single_var_choices
+          ),
+          
+          radioButtons(
+            "single_plot_type",
+            "Plot type:",
+            choices = c(
+              "Histogram / density"     = "dist",
+              "Bar chart (categorical)" = "bar",
+              "Time series (by year)"   = "time",
+              "State spotlight" = "spotlight"
+            ),
+            selected = "dist"
+          ),
+          
+          conditionalPanel(
+            condition = "input.single_plot_type" == "spotlight",
+            selectInput(
+              "single_splotlight",
+              "Focus on a state:",
+              choices =  state_choices,
+              selected = "")
+              
+            )
+          ),
+          hr(),
+          
+          checkboxInput(
+            "single_show_national",
+            "Show national comparison line",
+            value = FALSE
+          ),
+          
+          checkboxInput(
+            "single_show_narrative",
+            "Show narrative summary",
+            value = TRUE
+          )
+        ),
+        
+        mainPanel(
+          plotOutput("single_plot", height = "500px"),
+          
+          br(),
+          
+          h4("Summary statistics"),
+          verbatimTextOutput("single_summary"),
+          br(),
+          
+          conditionalPanel(
+            condition = "input.single_show_narrative == true",
+            wellPanel(
+              style = "background-color: #f0f8ff; border: 1px solid #4682b4;",
+              h4("What This Shows", style = "margin-top: 0; color: #4682b4;"),
+              textOutput("single_narrative")
+        )
+      )
+    )
+  )
+),
+
+## End User Interface Section ----------------
 ##
 ### Begin Server Section ----------------
 server <- function(input, output, session) {
-  ###
-  ### Enter Server Code After this line
-  ###
-  ##add in helpers here 
+  
+  ## Helper: pick the right data frame based on election level
   get_level_df <- function(level) {
     dplyr::filter(elections_all_dummy, level == !!level)
-  } #helper: pick the right data frame based on election level
+  }
   
-  #helper: filter by year and states
+  ## Helper: filter by year range and optional state list (state_po)
   filter_elections <- function(df, year_range, states = NULL) {
     df2 <- df |>
       dplyr::filter(
         year >= year_range[1],
         year <= year_range[2]
       )
+    
     if (!is.null(states) && length(states) > 0) {
-      df2 <- df2 |>
-        dplyr::filter(state %in% states)
+      if ("state_po" %in% names(df2)) {
+        df2 <- df2 |>
+          dplyr::filter(state_po %in% states)
+      } else if ("state" %in% names(df2)) {
+        df2 <- df2 |>
+          dplyr::filter(state %in% states)
+      }
     }
+    
     df2
   }
-  ###create US election map
+  
+  # ---- 1. National Map tab ----------------------------------------
+  
   map_data <- reactive({
     df_level <- get_level_df(input$map_level)
+    
     df_year <- df_level |>
       dplyr::filter(year == input$map_year)
-    df_year
+    
+    # Aggregate to one row per state
+    df_year |>
+      dplyr::group_by(state, state_po) |>
+      dplyr::summarise(
+        year               = dplyr::first(year),
+        totalvotes         = sum(totalvotes, na.rm = TRUE),
+        candidatevotes     = sum(candidatevotes, na.rm = TRUE),
+        governor_party     = dplyr::first(governor_party),
+        femgov             = dplyr::first(femgov),
+        term_length        = dplyr::first(term_length),
+        gub_election       = dplyr::first(gub_election),
+        prop_dem_party_id  = dplyr::first(prop_dem_party_id),
+        prop_rep_party_id  = dplyr::first(prop_rep_party_id),
+        prop_voted         = dplyr::first(prop_voted),
+        .groups = "drop"
+      )
   })
   
   output$us_map <- renderPlot({
     df <- map_data()
-    req(nrow(df) >0)
+    req(nrow(df) > 0)
     
-    #MAP CODE HERE 
-    ########
-    })
+    overlay_var <- input$map_overlay
+    
+    ggplot(df, aes(
+      x = reorder(state_po, .data[[overlay_var]]),
+      y = .data[[overlay_var]]
+    )) +
+      geom_col() +
+      coord_flip() +
+      labs(
+        x = "State",
+        y = names(map_overlay_choices)[map_overlay_choices == overlay_var],
+        title = paste0(
+          input$map_year, " ",
+          input$map_level, " – ",
+          names(map_overlay_choices)[map_overlay_choices == overlay_var]
+        )
+      ) +
+      theme_minimal()
+  })
   
   output$map_summary <- renderTable({
     df <- map_data()
+    
     vars <- input$map_info_vars
     if (is.null(vars) || length(vars) == 0) {
-      vars <- c(#####) #figure out what needs to go here
+      vars <- c("totalvotes", "prop_dem_party_id", "prop_rep_party_id", "prop_voted")
     }
+    
     df |>
-      dyplr::select(state, year, level, dplyr::any_of(vars)) |>
-      head(10)
+      dplyr::select(state, state_po, year, dplyr::any_of(vars)) |>
+      dplyr::arrange(state_po) |>
+      head(20)
   })
-  ## 4. Create Single Var Analysis
+  
+  # ---- 2. Single-variable tab -------------------------------------
+  
   single_data <- reactive({
     df_level <- get_level_df(input$single_level)
     filter_elections(
       df_level,
       year_range = input$single_year_range,
-      states = input$single_states
+      states     = input$single_states
     )
   })
   
   output$single_plot <- renderPlot({
     df <- single_data()
-    req(nrow(df) >0)
+    req(nrow(df) > 0)
     
-    var_name <- input$single_var
+    var_name  <- input$single_var
     plot_type <- input$single_plot_type
     
     x <- df[[var_name]]
     
     if (plot_type == "dist") {
-      #histogram + density for numeric?? check back to this later
-      p <- ggplot(df, aes(x + .data[[var_name]])) +
-        geom_histogram(bins = 15, alpha = 0.7) +
-        geom_density(aes(y = after_stat(..count..)))+
+      if (is.numeric(x)) {
+        # histogram + density for numeric
+        p <- ggplot(df, aes(x = .data[[var_name]])) +
+          geom_histogram(bins = 15, alpha = 0.7) +
+          geom_density(aes(y = after_stat(..count..))) +
+          labs(x = var_name, y = "Count")
+      } else {
+        # basic bar chart for categorical
+        p <- ggplot(df, aes(x = .data[[var_name]])) +
+          geom_bar() +
+          labs(x = var_name, y = "Count")
+      }
+      
+    } else if (plot_type == "bar") {
+      df_counts <- df |>
+        dplyr::count(.data[[var_name]], name = "n")
+      
+      p <- ggplot(df_counts, aes(x = .data[[var_name]], y = n)) +
+        geom_col() +
         labs(x = var_name, y = "Count")
       
-    } else if (plot_type == "bar"){
-      p <- df |>
+    } else if (plot_type == "time") {
+      df_agg <- df |>
         dplyr::group_by(year) |>
         dplyr::summarise(
-          value + mean(.data[[var_name]], na.rm = TRUE),
+          value = mean(.data[[var_name]], na.rm = TRUE),
           .groups = "drop"
         )
+      
       p <- ggplot(df_agg, aes(x = year, y = value)) +
         geom_line() +
         geom_point() +
         labs(x = "Year", y = paste("Mean", var_name))
     }
+    
     p + theme_minimal()
   })
   
@@ -445,43 +663,42 @@ server <- function(input, output, session) {
     req(nrow(df) > 0)
     
     var_name <- input$single_var
-    x<- df[[var_name]]
+    x <- df[[var_name]]
     
-    if(is.numeric(x)) {
+    if (is.numeric(x)) {
       stats <- c(
-        n = sum(!is.na(x)),
-        mean = mean(x, na.rm = TRUE),
+        n      = sum(!is.na(x)),
+        mean   = mean(x, na.rm = TRUE),
         median = median(x, na.rm = TRUE),
-        sd = sd(x, na.rm = TRUE),
-        min = min(x, na.rm = TRUE),
-        max = max(x, na.rm = TRUE)
+        sd     = sd(x, na.rm = TRUE),
+        min    = min(x, na.rm = TRUE),
+        max    = max(x, na.rm = TRUE)
       )
       print(stats)
-    } else{
+    } else {
       tab <- prop.table(table(x))
       print(round(tab, 3))
     }
   })
   
-
-  ## 6. Create 2 Variable Plots
+  # ---- 3. Multivariable tab ---------------------------------------
+  
   multi_data <- reactive({
     df_level <- get_level_df(input$multi_level)
-    df_filt <- filter_elections(
+    filter_elections(
       df_level,
       year_range = input$multi_year_range,
-      states = input$multi_states
+      states     = input$multi_states
     )
-    df_filt
   })
   
-  output$multi_plot <- randerPlot ({
+  output$multi_plot <- renderPlot({
     df <- multi_data()
     req(nrow(df) > 0)
     
-    outcome <- input$multi_outcome
+    outcome    <- input$multi_outcome
     predictors <- input$multi_predictors
-    re(length(predictors) >= 1)
+    req(length(predictors) >= 1)
     
     x_var <- predictors[1]
     
@@ -491,45 +708,53 @@ server <- function(input, output, session) {
         x = names(demographic_choices)[demographic_choices == x_var],
         y = names(outcome_choices)[outcome_choices == outcome]
       )
+    
     if (input$multi_add_lm) {
       p <- p + geom_smooth(method = "lm", se = FALSE)
     }
     
-    if(input$multi_plot_type == "facet_scatter") {
-      ##region is a placeholder
-      # p <- p + facet_wrap(~ region)
+    if (input$multi_plot_type == "facet_scatter") {
+      # Example facet by governor party if present
+      if ("governor_party" %in% names(df)) {
+        p <- p + facet_wrap(~ governor_party)
+      }
     } else if (input$multi_plot_type == "grouped_bar") {
       df <- df |>
-        dplyr::mutate(x_bin + cut(.data[[x_var]], breaks = 4))
-      p <-ggplot(df, aes(x = x_bin, y = .data[[outcome]])) +
+        dplyr::mutate(x_bin = cut(.data[[x_var]], breaks = 4))
+      
+      p <- ggplot(df, aes(x = x_bin, y = .data[[outcome]])) +
         stat_summary(fun = mean, geom = "bar") +
         labs(
-          x = paste("Binned",
-                    names(demographic_choices)[demographic_choices == x_var]),
+          x = paste(
+            "Binned",
+            names(demographic_choices)[demographic_choices == x_var]
+          ),
           y = names(outcome_choices)[outcome_choices == outcome]
         )
     }
+    
     p + theme_minimal()
   })
   
   output$multi_model_summary <- renderPrint({
     req(input$multi_add_lm)
+    
     df <- multi_data()
-    outcome <- input$multi_outcome
+    outcome    <- input$multi_outcome
     predictors <- input$multi_predictors
     req(length(predictors) >= 1)
     
     formula_str <- paste(
-      outcome, 
+      outcome,
       "~",
-      paste(predictors, collapse = "+")
+      paste(predictors, collapse = " + ")
     )
+    
     model <- lm(as.formula(formula_str), data = df)
     summary(model)
-  }) 
-  )
-  ##
-  ### Enter Server code above this line
-} # server
+  })
+}
 ### End Server Section ----------------
-shinyApp(ui, server)
+
+shinyApp(ui, server))
+

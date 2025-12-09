@@ -420,52 +420,103 @@ ui <- fluidPage(
       "Multi-Variable Analysis",
       sidebarLayout(
         sidebarPanel(
-          h4("Single-variable Controls"),
+          h4("Multivariable Controls"),
           
+          # Which level of election to analyze
           selectInput(
-            "single_level",
+            "multi_level",
             "Election level:",
-            choices = election_level_choices
+            choices  = election_level_choices,
+            selected = "President"
           ),
           
+          # Year range
           sliderInput(
-            "single_year_range",
+            "multi_year_range",
             "Year range:",
-            min = min(year_choices),
-            max = max(year_choices),
-            value = c(2000, max(year_choices)),
+            min   = min(year_choices),
+            max   = max(year_choices),
+            value = c(1990, max(year_choices)),
             step  = 1,
             sep   = ""
           ),
           
+          # Optional state filter
           selectInput(
-            "single_states",
-            "Filter by states:",
-            choices  = c("All states" = "", state_choices),
-            selected = ""
+            "multi_states",
+            "Filter states (optional):",
+            choices  = state_choices,
+            multiple = TRUE
           ),
           
+          # Outcome (Y-axis)
           selectInput(
-            "single_var",
-            "Variable:",
-            choices = single_var_choices
+            "multi_outcome",
+            "Outcome variable (Y-axis):",
+            choices = c(
+              "Total votes"                        = "totalvotes",
+              "Republican vote share (R / total)"  = "rep_share",
+              "Democratic vote share (D / total)"  = "dem_share",
+              "Republican margin (R - D)"          = "rep_margin"
+            ),
+            selected = "rep_margin"
           ),
           
+          # Explanatory variables (first one will be X-axis)
+          selectInput(
+            "multi_predictors",
+            "Explanatory variable(s) (first is X-axis):",
+            choices = c(
+              "ANES: turnout rate"        = "prop_voted",
+              "ANES: share Democrat ID"   = "prop_dem_party_id",
+              "ANES: share Republican ID" = "prop_rep_party_id",
+              "Governor party"            = "governor_party",
+              "State"                     = "state",
+              "Year"                      = "year"
+            ),
+            multiple = TRUE,
+            selected = c("prop_dem_party_id", "prop_voted")
+          ),
+          
+          # Color aesthetic
+          selectInput(
+            "multi_color_by",
+            "Color by (optional):",
+            choices = c(
+              "None"          = "",
+              "Governor party" = "governor_party",
+              "State"          = "state"
+            ),
+            selected = "governor_party"
+          ),
+          
+          # Plot style
           radioButtons(
-            "single_analysis_plot_type",
+            "multi_plot_type",
             "Plot type:",
             choices = c(
-              "Histogram / density"     = "dist",
-              "Bar chart (categorical)" = "bar",
-              "Time series (by year)"   = "time"
+              "Scatterplot"        = "scatter",
+              "Scatter, faceted by state" = "facet_state",
+              "Grouped boxplot"    = "box"
             ),
-            selected = "dist"
+            selected = "scatter"
+          ),
+          
+          checkboxInput(
+            "multi_add_lm",
+            "Add linear model fit",
+            value = TRUE
           )
         ),
         
         mainPanel(
-          plotOutput("single_plot", height = "500px"),
-          verbatimTextOutput("single_summary")
+          plotOutput("multi_plot", height = "500px"),
+          br(),
+          h4("Model summary (lm)"),
+          verbatimTextOutput("multi_model_summary"),
+          br(),
+          h4("First 10 rows of aggregated data"),
+          tableOutput("multi_data_head")
         )
       )
     ),
@@ -1290,11 +1341,39 @@ server <- function(input, output, session) {
   
   multi_data <- reactive({
     df_level <- get_level_df(input$multi_level)
-    filter_elections(
+    
+    # Filter by year + (optionally) states
+    df <- filter_elections(
       df_level,
       year_range = input$multi_year_range,
       states     = input$multi_states
     )
+    req(nrow(df) > 0)
+    
+    # Aggregate to STATE–YEAR level and bring in ANES + governor info
+    df_state <- df |>
+      dplyr::group_by(year, state, state_po) |>
+      dplyr::summarise(
+        totalvotes  = sum(candidatevotes, na.rm = TRUE),
+        dem_votes   = sum(candidatevotes[party_simplified == "DEMOCRAT"],   na.rm = TRUE),
+        rep_votes   = sum(candidatevotes[party_simplified == "REPUBLICAN"], na.rm = TRUE),
+        other_votes = sum(candidatevotes[!(party_simplified %in% c("DEMOCRAT", "REPUBLICAN"))],
+                          na.rm = TRUE),
+        governor_party     = dplyr::first(governor_party),
+        prop_dem_party_id  = dplyr::first(prop_dem_party_id),
+        prop_rep_party_id  = dplyr::first(prop_rep_party_id),
+        prop_voted         = dplyr::first(prop_voted),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        rep_share  = dplyr::if_else(totalvotes > 0, rep_votes / totalvotes, NA_real_),
+        dem_share  = dplyr::if_else(totalvotes > 0, dem_votes / totalvotes, NA_real_),
+        rep_margin = rep_share - dem_share,
+        # alias so "candidatevotes" still exists as an outcome if needed
+        candidatevotes = totalvotes
+      )
+    
+    df_state
   })
   
   output$multi_plot <- renderPlot({
@@ -1302,62 +1381,104 @@ server <- function(input, output, session) {
     req(nrow(df) > 0)
     
     outcome    <- input$multi_outcome
-    predictors <- input$multi_predictors
-    req(length(predictors) >= 1)
+    preds      <- input$multi_predictors
+    req(length(preds) >= 1)
     
-    x_var <- predictors[1]
+    x_var      <- preds[1]
+    color_var  <- input$multi_color_by
+    plot_type  <- input$multi_plot_type
     
-    p <- ggplot(df, aes(x = .data[[x_var]], y = .data[[outcome]])) +
-      geom_point(alpha = 0.7) +
-      labs(
-        x = names(demographic_choices)[demographic_choices == x_var],
-        y = names(outcome_choices)[outcome_choices == outcome]
-      )
+    # Base ggplot
+    p <- ggplot(df, aes(x = .data[[x_var]], y = .data[[outcome]]))
     
-    if (input$multi_add_lm) {
-      p <- p + geom_smooth(method = "lm", se = FALSE)
+    # Optional color/fill aesthetic
+    if (!is.null(color_var) && nzchar(color_var)) {
+      p <- p + aes(color = .data[[color_var]])
     }
     
-    if (input$multi_plot_type == "facet_scatter") {
-      # Example facet by governor party if present
-      if ("governor_party" %in% names(df)) {
-        p <- p + facet_wrap(~ governor_party)
+    if (plot_type %in% c("scatter", "facet_state")) {
+      # numeric–numeric -> scatter; otherwise boxplot-style
+      if (is.numeric(df[[x_var]]) && is.numeric(df[[outcome]])) {
+        p <- p + geom_point(alpha = 0.7)
+        if (input$multi_add_lm) {
+          p <- p + geom_smooth(method = "lm", se = FALSE)
+        }
+      } else {
+        p <- p + geom_boxplot()
       }
-    } else if (input$multi_plot_type == "grouped_bar") {
-      df <- df |>
-        dplyr::mutate(x_bin = cut(.data[[x_var]], breaks = 4))
       
-      p <- ggplot(df, aes(x = x_bin, y = .data[[outcome]])) +
-        stat_summary(fun = mean, geom = "bar") +
-        labs(
-          x = paste(
-            "Binned",
-            names(demographic_choices)[demographic_choices == x_var]
-          ),
-          y = names(outcome_choices)[outcome_choices == outcome]
-        )
+      if (plot_type == "facet_state") {
+        p <- p + facet_wrap(~ state)
+      }
+      
+    } else if (plot_type == "box") {
+      # Grouped boxplot of outcome by (categorical) x
+      p <- ggplot(df, aes(x = .data[[x_var]], y = .data[[outcome]]))
+      if (!is.null(color_var) && nzchar(color_var)) {
+        p <- p + aes(fill = .data[[color_var]])
+      }
+      p <- p + geom_boxplot()
     }
     
-    p + theme_minimal()
+    # Nice axis labels
+    outcome_labels <- c(
+      totalvotes = "Total votes (all candidates)",
+      rep_share  = "Republican vote share",
+      dem_share  = "Democratic vote share",
+      rep_margin = "Republican minus Democratic vote share"
+    )
+    
+    predictor_labels <- c(
+      prop_voted = "ANES turnout rate",
+      prop_dem_party_id = "ANES share Democrat ID",
+      prop_rep_party_id = "ANES share Republican ID",
+      governor_party = "Governor party",
+      state = "State",
+      year = "Year"
+    )
+    
+    y_lab <- outcome_labels[[outcome]]
+    if (is.null(y_lab)) y_lab <- outcome
+    
+    x_lab <- predictor_labels[[x_var]]
+    if (is.null(x_lab)) x_lab <- x_var
+    
+    p +
+      labs(
+        x = x_lab,
+        y = y_lab,
+        color = if (!is.null(color_var) && nzchar(color_var)) color_var else NULL,
+        fill  = if (!is.null(color_var) && nzchar(color_var)) color_var else NULL
+      ) +
+      theme_minimal()
   })
   
   output$multi_model_summary <- renderPrint({
-    req(input$multi_add_lm)
-    
     df <- multi_data()
-    outcome    <- input$multi_outcome
-    predictors <- input$multi_predictors
-    req(length(predictors) >= 1)
+    req(nrow(df) > 5)
+    
+    outcome <- input$multi_outcome
+    preds <- input$multi_predictors
+    req(length(preds) >= 1)
+    
+    # Simple check: need numeric outcome for lm
+    if (!is.numeric(df[[outcome]])) {
+      cat("Linear model summary only computed when the outcome is numeric.\n")
+      return()
+    }
     
     formula_str <- paste(
       outcome,
       "~",
-      paste(predictors, collapse = " + ")
+      paste(preds, collapse = " + ")
     )
     
     model <- lm(as.formula(formula_str), data = df)
     summary(model)
-    
+  })
+  
+  output$multi_data_head <- renderTable({
+    head(multi_data(), 10)
   })
   
   # ----- 4. Statistical Test Tab -------

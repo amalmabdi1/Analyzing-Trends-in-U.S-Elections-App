@@ -257,14 +257,14 @@ elections_all_dummy <- bind_rows(
 
 gub_dummy <- govener_clean_sub |>
   mutate(
-    office          = "GOVERNOR",
+    office = "GOVERNOR",
     # convert full state names to postal abbreviations for state_po
-    state_po        = state.abb[match(state, state.name)],
-    candidate       = NA_character_,
+    state_po = state.abb[match(state, state.name)],
+    candidate = NA_character_,
     party_simplified = governor_party,   # rough stand-in
-    candidatevotes  = NA_real_,
-    totalvotes      = NA_real_,
-    level           = "Governor"
+    candidatevotes = NA_real_,
+    totalvotes = NA_real_,
+    level = "Governor"
   ) |>
   select(
     year, state, state_po,
@@ -431,8 +431,8 @@ ui <- fluidPage(
           sliderInput(
             "single_year_range",
             "Year range:",
-            min   = min(year_choices),
-            max   = max(year_choices),
+            min = min(year_choices),
+            max = max(year_choices),
             value = c(2000, max(year_choices)),
             step  = 1,
             sep   = ""
@@ -503,12 +503,12 @@ ui <- fluidPage(
               "anes_filter",
               "Filter voters by:",
               choices = c(
-                "All voters"          = "all",
-                "Black voters"        = "black",
-                "White voters"        = "white",
-                "Hispanic voters"     = "hispanic",
-                "Men"                 = "men",
-                "Women"               = "women",
+                "All voters" = "all",
+                "Black voters" = "black",
+                "White voters" = "white",
+                "Hispanic voters" = "hispanic",
+                "Men" = "men",
+                "Women" = "women",
                 "High school or less" = "lowedu",
                 "Some college or more"= "highedu"
               ),
@@ -605,12 +605,52 @@ ui <- fluidPage(
               padding:10px;",
               textOutput("single_analysis_narrative")
               
-              
             )
           )
         )
       )
-    )  
+    ),
+#---------stat test UI-------------
+    tabPanel(
+      "Statistical Tests",
+      sidebarLayout(
+        sidebarPanel(
+          h4("Statistical Test Controls"),
+          
+          radioButtons(
+            "test_type",
+            "Choose a test:",
+            choices = c(
+              "Turnout by governor party (t-test)" =
+                "ttest_turnout_govparty",
+              "Governor vs president party alignment (chi-square)" =
+                "chisq_gov_pres",
+              "ANES Dem ID vs Dem vote share (correlation)" =
+                "cor_demID_demShare"
+            ),
+            selected = "ttest_turnout_govparty"
+          ),
+          
+          sliderInput(
+            "test_year_range",
+            "Year range:",
+            min   = min(year_choices),
+            max   = max(year_choices),
+            value = c(1980, max(year_choices)),
+            step  = 1,
+            sep   = ""
+          )
+        ),
+        
+        mainPanel(
+          h4("Test results"),
+          verbatimTextOutput("stat_test_result"),
+          br(),
+          h4("Data used in test (first 10 rows)"),
+          tableOutput("stat_test_data")
+        )
+      )
+    )
   )
 )
 ## End User Interface Section ----------------
@@ -1037,8 +1077,8 @@ server <- function(input, output, session) {
     )
     
     metric_type <- input$results_metric_type
-    plot_type   <- input$single_analysis_plot_type
-    level       <- input$single_analysis_level
+    plot_type <- input$single_analysis_plot_type
+    level <- input$single_analysis_level
     
     # Governor: only Party Winner works
     if (level == "Governor" && metric_type == "share") {
@@ -1097,7 +1137,7 @@ server <- function(input, output, session) {
           facet_wrap(~ state_po, scales = "free_y") +
           scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
           scale_color_manual(values = c(
-            "DEMOCRAT"   = "#0059ff",
+            "DEMOCRAT" = "#0059ff",
             "REPUBLICAN" = "#ff0000"
           )) +
           labs(
@@ -1320,6 +1360,128 @@ server <- function(input, output, session) {
     
   })
   
-} # <-- Single closing brace for server function
+  # ----- 4. Statistical Test Tab -------
+  
+  test_data <- reactive({
+    req(input$test_type, input$test_year_range)
+    yr <- input$test_year_range
+    
+    if (input$test_type == "ttest_turnout_govparty") {
+      # t-test: ANES turnout (prop_voted) by governor party
+      df <- elections_all_dummy |>
+        dplyr::filter(
+          level == "Governor",
+          year >= yr[1],
+          year <= yr[2],
+          !is.na(governor_party),
+          !is.na(prop_voted)
+        ) |>
+        dplyr::distinct(state, year, governor_party, prop_voted)
+      
+    } else if (input$test_type == "chisq_gov_pres") {
+      
+      pres_state_year <- elections_all_dummy |>
+        dplyr::filter(
+          level == "President",
+          year >= yr[1],
+          year <= yr[2]
+        ) |>
+        dplyr::group_by(state, year) |>
+        dplyr::summarize(
+          totalvotes  = sum(candidatevotes, na.rm = TRUE),
+          dem_votes   = sum(candidatevotes[party_simplified == "DEMOCRAT"],   na.rm = TRUE),
+          rep_votes   = sum(candidatevotes[party_simplified == "REPUBLICAN"], na.rm = TRUE),
+          other_votes = sum(candidatevotes[!(party_simplified %in% c("DEMOCRAT", "REPUBLICAN"))],
+                            na.rm = TRUE),
+          .groups = "drop"
+        ) |>
+        dplyr::mutate(
+          winning_party = dplyr::case_when(
+            dem_votes >  rep_votes & dem_votes >= other_votes ~ "DEMOCRAT",
+            rep_votes >  dem_votes & rep_votes >= other_votes ~ "REPUBLICAN",
+            TRUE ~ "OTHER"
+          )
+        )
+      
+      df <- pres_state_year |>
+        dplyr::left_join(
+          govener_clean_sub |>
+            dplyr::select(state, year, governor_party),
+          by = c("state", "year")
+        ) |>
+        dplyr::filter(
+          !is.na(governor_party),
+          !is.na(winning_party)
+        )
+      
+    } else if (input$test_type == "cor_demID_demShare") {
+      
+      pres_state_year <- elections_all_dummy |>
+        dplyr::filter(
+          level == "President",
+          year >= yr[1],
+          year <= yr[2]
+        ) |>
+        dplyr::group_by(state, year) |>
+        dplyr::summarize(
+          totalvotes = sum(candidatevotes, na.rm = TRUE),
+          dem_votes  = sum(candidatevotes[party_simplified == "DEMOCRAT"],   na.rm = TRUE),
+          rep_votes  = sum(candidatevotes[party_simplified == "REPUBLICAN"], na.rm = TRUE),
+          .groups = "drop"
+        ) |>
+        dplyr::mutate(
+          dem_share = dplyr::if_else(
+            totalvotes > 0,
+            dem_votes / totalvotes,
+            NA_real_
+          )
+        )
+      
+      df <- pres_state_year |>
+        dplyr::left_join(
+          anes_state_year |>
+            dplyr::select(year, state, prop_dem_party_id),
+          by = c("state", "year")
+        ) |>
+        dplyr::filter(
+          !is.na(dem_share),
+          !is.na(prop_dem_party_id)
+        )
+      
+    } else {
+      df <- tibble::tibble()
+    }
+    
+    df
+  })
+  
+  output$stat_test_result <- renderPrint({
+    df <- test_data()
+    req(nrow(df) > 0)
+    
+    if (input$test_type == "ttest_turnout_govparty") {
+      cat("Two-sample t-test:\n",
+          "Mean ANES turnout (prop_voted) by governor party\n\n")
+      print(t.test(prop_voted ~ governor_party, data = df))
+      
+    } else if (input$test_type == "chisq_gov_pres") {
+      cat("Chi-square test of independence:\n",
+          "Governor party vs. presidential winning party (state-year)\n\n")
+      tab <- table(df$governor_party, df$winning_party)
+      print(tab)
+      cat("\n")
+      print(chisq.test(tab))
+      
+    } else if (input$test_type == "cor_demID_demShare") {
+      cat("Correlation test:\n",
+          "ANES Dem ID (prop_dem_party_id) vs Democratic vote share (dem_share)\n\n")
+      print(cor.test(df$prop_dem_party_id, df$dem_share, method = "pearson"))
+    }
+  })
+  
+  output$stat_test_data <- renderTable({
+    head(test_data(), 10)
+  })
+}
 
 shinyApp(ui, server)

@@ -440,14 +440,6 @@ ui <- fluidPage(
             sep  = ""
           ),
           
-          # Optional state filter
-          selectInput(
-            "multi_states",
-            "Filter states (optional):",
-            choices  = state_choices,
-            multiple = TRUE
-          ),
-          
           # Outcome (Y-axis)
           selectInput(
             "multi_outcome",

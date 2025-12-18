@@ -21,5 +21,3 @@ No API keys are required to run the app.\
 - Amal Abdi  
 - Olivia Bohart  
 
-### Repository  
-GitHub: <https://github.com/25F-DATA-413-613/gp-voting-analysis-a-s-o.git>
